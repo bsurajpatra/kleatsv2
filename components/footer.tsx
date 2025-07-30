@@ -1,6 +1,8 @@
 import Logo from "./logo"
 import { Facebook, Instagram, Twitter } from "lucide-react"
-import Link from "next/link"
+import Link from 'next/link';
+
+
 
 export default function Footer() {
   return (
@@ -37,18 +39,15 @@ export default function Footer() {
                   Account
                 </Link>
               </li>
+               <li>
+                 <Link href="/contact" className="text-muted-foreground hover:text-primary">
+                 ContactUs
+                 </Link>
+               </li>
             </ul>
           </div>
 
-          <div>
-            <h3 className="mb-3 text-sm font-medium">Contact Us</h3>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li>Email: support@kl-eats.com</li>
-              <li>Phone: +91 9876543210</li>
-              <li>Address: KL University Campus, Vaddeswaram, Guntur District, Andhra Pradesh, 522302</li>
-            </ul>
-          </div>
-
+          
           <div>
             <h3 className="mb-3 text-sm font-medium">Follow Us</h3>
             <div className="flex space-x-4">
