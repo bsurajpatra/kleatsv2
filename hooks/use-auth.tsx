@@ -1,0 +1,210 @@
+"use client"
+
+import type React from "react"
+
+import { createContext, useContext, useEffect, useState } from "react"
+
+export type UserRole = "customer" | "canteen_owner" | "admin" | "canteen_worker"
+
+export type User = {
+  id: string
+  name: string
+  email: string
+  studentId?: string
+  role: UserRole
+  canteenId?: string
+}
+
+type AuthContextType = {
+  user: User | null
+  login: (email: string, password: string) => Promise<boolean>
+  signup: (name: string, email: string, studentId: string, password: string, role?: UserRole) => Promise<boolean>
+  logout: () => void
+  updateUser: (userData: Partial<User>) => void
+  isAuthenticated: boolean
+  isCanteenOwner: boolean
+  isAdmin: boolean
+  isCanteenWorker: boolean
+}
+
+const AuthContext = createContext<AuthContextType>({
+  user: null,
+  login: async () => false,
+  signup: async () => false,
+  logout: () => {},
+  updateUser: () => {},
+  isAuthenticated: false,
+  isCanteenOwner: false,
+  isAdmin: false,
+  isCanteenWorker: false,
+})
+
+// Mock users for demo
+const mockUsers = [
+  {
+    id: "user_1",
+    name: "Raunit",
+    email: "student@kl.edu",
+    studentId: "2300033572",
+    role: "customer" as UserRole,
+  },
+  {
+    id: "user_2",
+    name: "KL Adda Owner",
+    email: "kl-adda@owner.com",
+    role: "canteen_owner" as UserRole,
+    canteenId: "kl-adda",
+  },
+  {
+    id: "user_3",
+    name: "Satish Owner",
+    email: "satish@owner.com",
+    role: "canteen_owner" as UserRole,
+    canteenId: "satish",
+  },
+  // New canteen worker account
+  {
+    id: "worker_1",
+    name: "Adda Worker",
+    email: "adda@gmail.com",
+    role: "canteen_worker" as UserRole,
+    canteenId: "kl-adda",
+  },
+  // New admin account
+  {
+    id: "admin_1",
+    name: "System Administrator",
+    email: "admin@gmail.com",
+    role: "admin" as UserRole,
+  },
+]
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [isInitialized, setIsInitialized] = useState(false)
+
+  // Load user from localStorage on mount
+  useEffect(() => {
+    try {
+      const storedUser = localStorage.getItem("user")
+      if (storedUser) {
+        setUser(JSON.parse(storedUser))
+      }
+      setIsInitialized(true)
+    } catch (error) {
+      console.error("Failed to load user from localStorage", error)
+      setIsInitialized(true)
+    }
+  }, [])
+
+  // Save user to localStorage when it changes
+  useEffect(() => {
+    if (isInitialized) {
+      try {
+        if (user) {
+          localStorage.setItem("user", JSON.stringify(user))
+        } else {
+          localStorage.removeItem("user")
+        }
+      } catch (error) {
+        console.error("Failed to save user to localStorage", error)
+      }
+    }
+  }, [user, isInitialized])
+
+  const login = async (email: string, password: string) => {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    // Check for special worker login
+    if (email === "adda@gmail.com" && password === "adda") {
+      const workerUser = mockUsers.find((u) => u.email === "adda@gmail.com")
+      if (workerUser) {
+        setUser(workerUser)
+        return true
+      }
+    }
+
+    // Check for admin login
+    if (email === "admin@gmail.com" && password === "admin") {
+      const adminUser = mockUsers.find((u) => u.email === "admin@gmail.com")
+      if (adminUser) {
+        setUser(adminUser)
+        return true
+      }
+    }
+
+    // Check if email matches any mock user
+    const foundUser = mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase())
+
+    if (foundUser) {
+      setUser(foundUser)
+      return true
+    }
+
+    // For demo purposes, create a new customer user if not found
+    const newUser = {
+      id: "user_" + Math.random().toString(36).substr(2, 9),
+      name: email.split("@")[0],
+      email,
+      studentId: "2300000000",
+      role: "customer" as UserRole,
+    }
+
+    setUser(newUser)
+    return true
+  }
+
+  const signup = async (
+    name: string,
+    email: string,
+    studentId: string,
+    password: string,
+    role: UserRole = "customer",
+  ) => {
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+
+    // For demo purposes, always succeed
+    const newUser = {
+      id: "user_" + Math.random().toString(36).substr(2, 9),
+      name,
+      email,
+      studentId,
+      role,
+    }
+
+    setUser(newUser)
+    return true
+  }
+
+  const logout = () => {
+    setUser(null)
+  }
+
+  const updateUser = (userData: Partial<User>) => {
+    if (user) {
+      setUser({ ...user, ...userData })
+    }
+  }
+
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        login,
+        signup,
+        logout,
+        updateUser,
+        isAuthenticated: !!user,
+        isCanteenOwner: !!user && user.role === "canteen_owner",
+        isAdmin: !!user && user.role === "admin",
+        isCanteenWorker: !!user && user.role === "canteen_worker",
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
+}
+
+export const useAuth = () => useContext(AuthContext)
