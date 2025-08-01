@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
 import Link from "next/link"
 import SearchBar from "@/components/search-bar"
+import ContactUs from "./contact/page"
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
@@ -266,5 +267,6 @@ export default function Home() {
       <CartIcon />
       <BottomNavigation />
     </main>
+
   )
 }
