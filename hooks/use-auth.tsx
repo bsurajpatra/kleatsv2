@@ -179,7 +179,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = () => {
-    setUser(null)
+    // Best-effort notify backend, then clear local state/storage
+    try {
+      const token =
+        (typeof window !== "undefined" && (localStorage.getItem("auth_token") || localStorage.getItem("token"))) ||
+        undefined
+
+      if (token && process.env.NEXT_PUBLIC_API_URL) {
+        const url = `${process.env.NEXT_PUBLIC_API_URL}/api/user/auth/logout`
+        // Backend expects raw token in Authorization (no Bearer)
+        fetch(url, {
+          method: "GET",
+          headers: { Authorization: token },
+        }).catch(() => {
+          // Ignore network errors on logout
+        })
+      }
+    } catch (e) {
+      // Ignore errors
+    } finally {
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("auth_token")
+          localStorage.removeItem("token")
+          localStorage.removeItem("user")
+        }
+      } catch (e) {
+        // Ignore storage errors
+      }
+      setUser(null)
+    }
   }
 
   const updateUser = (userData: Partial<User>) => {

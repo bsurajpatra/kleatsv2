@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useSubscription } from "@/hooks/use-subscription"
 
 export default function AccountPage() {
@@ -27,12 +28,30 @@ export default function AccountPage() {
   const { user, logout, updateUser } = useAuth()
   const { currentSubscription, plans, isSubscribed } = useSubscription()
   const router = useRouter()
+  const [backendProfile, setBackendProfile] = useState<
+    | null
+    | {
+        userId: number
+        googleId: string
+        phoneNo: number
+        role: string
+        DayOrHos: string
+        name: string
+        email: string
+      }
+  >(null)
+  const fetchedRef = useRef(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Edit profile state
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false)
   const [editName, setEditName] = useState("")
   const [editEmail, setEditEmail] = useState("")
   const [editStudentId, setEditStudentId] = useState("")
+  const [editPhoneNo, setEditPhoneNo] = useState("")
+  const [editRole, setEditRole] = useState<"student" | "staff">("student")
+  // Backend expects DayOrHos to be either "hostel" or "DayScoller"
+  const [editDayOrHos, setEditDayOrHos] = useState<"hostel" | "DayScoller">("hostel")
 
   // Wait until mounted to avoid hydration mismatch
   useEffect(() => {
@@ -47,14 +66,37 @@ export default function AccountPage() {
     }
   }, [user, router, mounted])
 
-  // Set initial values for edit form
+  // Fetch backend user data once
+  useEffect(() => {
+    if (!mounted || fetchedRef.current) return
+    fetchedRef.current = true
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+      if (!token) return
+      const run = async () => {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/User/auth/get-user-data`, {
+          method: "GET",
+          headers: { Authorization: token },
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        if (data?.data) setBackendProfile(data.data)
+      }
+      void run()
+    } catch {}
+  }, [mounted])
+
+  // Set initial values for edit form (prefer backend values when available)
   useEffect(() => {
     if (user) {
-      setEditName(user.name)
-      setEditEmail(user.email)
-      setEditStudentId(user.studentId)
+      setEditName(backendProfile?.name || user.name)
+      setEditEmail(backendProfile?.email || user.email)
+      setEditStudentId(user.studentId || "")
+      setEditPhoneNo(backendProfile?.phoneNo ? String(backendProfile.phoneNo) : "")
+      setEditRole((backendProfile?.role as any) === "staff" ? "staff" : "student")
+      setEditDayOrHos((backendProfile?.DayOrHos as any) === "DayScoller" ? "DayScoller" : "hostel")
     }
-  }, [user])
+  }, [user, backendProfile])
 
   const handleThemeToggle = () => {
     const newTheme = isDarkMode ? "light" : "dark"
@@ -67,14 +109,45 @@ export default function AccountPage() {
     router.push("/login")
   }
 
-  const handleSaveProfile = () => {
-    if (user) {
-      updateUser({
+  const handleSaveProfile = async () => {
+    if (!user) return
+    try {
+      setIsSaving(true)
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null
+      if (!token) return
+      const payload: any = {
         name: editName,
         email: editEmail,
-        studentId: editStudentId,
+        phoneNo: editPhoneNo ? Number(editPhoneNo) : undefined,
+        role: editRole,
+        DayOrHos: editDayOrHos,
+        studentId: editStudentId || undefined,
+      }
+      // prune undefined
+      Object.keys(payload).forEach((k) => payload[k] === undefined && delete payload[k])
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/User/auth/edit-user-data`, {
+        method: "PUT",
+        headers: {
+          Authorization: token,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       })
+      const text = await res.text()
+      if (!res.ok) {
+        console.error("Edit failed", res.status, text)
+        throw new Error(text || `Edit failed (${res.status})`)
+      }
+      try {
+        const json = JSON.parse(text)
+        if (json?.data) setBackendProfile(json.data)
+      } catch {}
       setIsEditProfileOpen(false)
+    } catch (e) {
+      console.error("Edit error:", e)
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -113,12 +186,20 @@ export default function AccountPage() {
             </div>
             <div className="flex-1">
               <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">{user.name}</h2>
+                <h2 className="text-xl font-bold">{backendProfile?.name || user.name}</h2>
                 <Button variant="ghost" size="sm" onClick={() => setIsEditProfileOpen(true)}>
                   <Edit className="h-4 w-4" />
                 </Button>
               </div>
               <p className="text-sm text-muted-foreground">ID: {user.studentId}</p>
+              {backendProfile && (
+                <div className="mt-1 space-y-0.5 text-sm text-muted-foreground">
+                  <p>Phone: {backendProfile.phoneNo}</p>
+                  <p>
+                    Role: {backendProfile.role} · {backendProfile.DayOrHos}
+                  </p>
+                </div>
+              )}
               {isSubscribed && currentPlan && (
                 <Badge className="mt-2" variant="secondary">
                   {currentPlan.name} Subscriber
@@ -339,6 +420,42 @@ export default function AccountPage() {
               />
             </div>
             <div className="space-y-2">
+              <Label htmlFor="edit-phone">Phone Number</Label>
+              <Input
+                id="edit-phone"
+                inputMode="numeric"
+                value={editPhoneNo}
+                onChange={(e) => setEditPhoneNo(e.target.value.replace(/[^\d]/g, "").slice(0, 10))}
+                placeholder="10-digit phone number"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <RadioGroup value={editRole} onValueChange={(v) => setEditRole(v as "student" | "staff")} className="flex gap-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="student" id="role-student" />
+                  <Label htmlFor="role-student">Student</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="staff" id="role-staff" />
+                  <Label htmlFor="role-staff">Staff</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="space-y-2">
+              <Label>Day Scholar or Hosteller</Label>
+              <RadioGroup value={editDayOrHos} onValueChange={(v) => setEditDayOrHos(v as any)} className="flex gap-4">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="DayScoller" id="day-scholar" />
+                  <Label htmlFor="day-scholar">Day Scholar</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="hostel" id="hosteller" />
+                  <Label htmlFor="hosteller">Hosteller</Label>
+                </div>
+              </RadioGroup>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="edit-student-id">Student ID</Label>
               <Input
                 id="edit-student-id"
@@ -352,7 +469,9 @@ export default function AccountPage() {
             <Button variant="outline" onClick={() => setIsEditProfileOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleSaveProfile}>Save Changes</Button>
+            <Button onClick={handleSaveProfile} disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save Changes"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
