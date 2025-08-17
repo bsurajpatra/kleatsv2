@@ -11,6 +11,7 @@ import CartIcon from "@/components/cart-icon"
 import FoodItemCard from "@/components/food-item-card"
 import { useCart } from "@/hooks/use-cart"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { isOpenNow } from "@/lib/utils"
 
 type CanteenDetails = {
   CanteenName: string
@@ -35,36 +36,6 @@ type Category = {
   endTime?: string | null
 }
 
-function isOpenNow(fromTime?: string | null, toTime?: string | null): boolean | null {
-  const start = (fromTime || "").trim()
-  const end = (toTime || "").trim()
-  if (!start || !end) return null
-  const parseTime = (t: string) => {
-    const ampmMatch = t.match(/^\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/i)
-    let hours: number, minutes: number
-    if (ampmMatch) {
-      hours = parseInt(ampmMatch[1], 10) % 12
-      if (ampmMatch[3].toUpperCase() === "PM") hours += 12
-      minutes = parseInt(ampmMatch[2], 10)
-    } else {
-      const match = t.match(/^\s*(\d{1,2}):(\d{2})\s*$/)
-      if (!match) return NaN
-      hours = parseInt(match[1], 10)
-      minutes = parseInt(match[2], 10)
-    }
-    return hours * 60 + minutes
-  }
-  const startMin = parseTime(start)
-  const endMin = parseTime(end)
-  if (isNaN(startMin) || isNaN(endMin)) return null
-  const now = new Date()
-  const nowMin = now.getHours() * 60 + now.getMinutes()
-  if (startMin <= endMin) {
-    return nowMin >= startMin && nowMin <= endMin
-  } else {
-    return nowMin >= startMin || nowMin <= endMin
-  }
-}
 
 // Deterministic rating > 4.5 based on id
 function pseudoRating(id: string): string {

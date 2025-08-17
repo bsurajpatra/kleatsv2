@@ -13,6 +13,7 @@ import { motion } from "framer-motion"
 
 // Import SearchBar
 import SearchBar from "@/components/search-bar"
+import { isOpenNow } from "@/lib/utils"
 
 type ApiCanteen = {
   canteenId: number
@@ -28,44 +29,6 @@ type ApiResponse = {
   code: number
   message: string
   data: ApiCanteen[]
-}
-
-function isOpenNow(fromTime?: string | null, toTime?: string | null): boolean | null {
-  // Return true if currently open, false if closed, null if timing unknown/invalid
-  const start = (fromTime || "").trim()
-  const end = (toTime || "").trim()
-  if (!start || !end) return null
-
-  const parseTime = (t: string) => {
-    // support HH:mm or H:mm, optionally with AM/PM; fall back to invalid
-    const ampmMatch = t.match(/^\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/i)
-    let hours: number, minutes: number
-    if (ampmMatch) {
-      hours = parseInt(ampmMatch[1], 10) % 12
-      if (ampmMatch[3].toUpperCase() === "PM") hours += 12
-      minutes = parseInt(ampmMatch[2], 10)
-    } else {
-      const match = t.match(/^\s*(\d{1,2}):(\d{2})\s*$/)
-      if (!match) return NaN
-      hours = parseInt(match[1], 10)
-      minutes = parseInt(match[2], 10)
-    }
-    return hours * 60 + minutes
-  }
-
-  const startMin = parseTime(start)
-  const endMin = parseTime(end)
-  if (isNaN(startMin) || isNaN(endMin)) return null
-
-  const now = new Date()
-  const nowMin = now.getHours() * 60 + now.getMinutes()
-
-  // Handle overnight windows (e.g., 22:00 - 06:00)
-  if (startMin <= endMin) {
-    return nowMin >= startMin && nowMin <= endMin
-  } else {
-    return nowMin >= startMin || nowMin <= endMin
-  }
 }
 
 export default function CanteensPage() {

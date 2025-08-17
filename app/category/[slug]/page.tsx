@@ -1,69 +1,119 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { useCart } from "@/hooks/use-cart"
-import { useCanteens } from "@/hooks/use-canteens"
 import { useAuth } from "@/hooks/use-auth"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
 import FoodItemCard from "@/components/food-item-card"
 import { motion } from "framer-motion"
 
-export default function CategoryPage({ params }: { params: { slug: string } }) {
-  const { slug } = params
-  const { categories, getItemsByCategory } = useCanteens()
+type RawItem = {
+  ItemId: number
+  ItemName: string
+  Description?: string
+  Price: number
+  ava?: boolean
+  ImagePath?: string
+  category?: string
+  startTime?: string
+  endTime?: string
+  canteenId: number
+}
+
+type ItemsResponse = {
+  code: number
+  message: string
+  data: RawItem[]
+}
+
+type CanteenDetails = {
+  canteenId?: number
+  CanteenName: string
+}
+
+type CanteenResponse = {
+  code: number
+  message: string
+  data: CanteenDetails
+}
+
+function buildImageUrl(path?: string | null) {
+  if (!path) return "/placeholder.svg"
+  const base = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`
+}
+
+export default function CategoryPage() {
+  const { slug } = useParams<{ slug: string }>()
+  const categoryName = decodeURIComponent(slug)
   const { addItem } = useCart()
   const { isAuthenticated } = useAuth()
   const router = useRouter()
 
-  const [category, setCategory] = useState<any>(null)
   const [items, setItems] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const loadCategoryData = async () => {
+    let mounted = true
+    const load = async () => {
+      setLoading(true)
+      setError(null)
       try {
-        setLoading(true)
-
-        // Find category by slug
-        const categoryData = categories.find((cat) => cat.slug === slug)
-        if (!categoryData) {
-          throw new Error("Category not found")
-        }
-        setCategory(categoryData)
-
-        // Get items for this category
-        const itemsData = await getItemsByCategory(categoryData.name)
-        setItems(itemsData)
-      } catch (error) {
-        console.error("Failed to load category data:", error)
+        const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || ""
+        const res = await fetch(`${base}/api/explore/get/items-by-category/${encodeURIComponent(categoryName)}`, {
+          cache: "no-store",
+        })
+        if (!res.ok) throw new Error(`Items HTTP ${res.status}`)
+        const json: ItemsResponse = await res.json()
+        if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed items fetch")
+        const avail = json.data.filter((it) => it.ava !== false)
+        const uniqueCIds = Array.from(new Set(avail.map((it) => it.canteenId)))
+        // fetch canteen names
+        const nameEntries = await Promise.all(
+          uniqueCIds.map(async (id) => {
+            try {
+              const d = await fetch(`${base}/api/explore/canteen/details/${id}`, { cache: "no-store" })
+              if (!d.ok) throw new Error()
+              const dJson: CanteenResponse = await d.json()
+              return [id, dJson.data?.CanteenName || `Canteen ${id}`] as const
+            } catch {
+              return [id, `Canteen ${id}`] as const
+            }
+          }),
+        )
+        const nameMap = Object.fromEntries(nameEntries) as Record<number, string>
+        const mapped = avail.map((it) => ({
+          id: it.ItemId,
+          name: it.ItemName,
+          price: it.Price,
+          image: buildImageUrl(it.ImagePath || undefined),
+          category: it.category,
+          description: it.Description,
+          canteen: nameMap[it.canteenId] || `Canteen ${it.canteenId}`,
+        }))
+        if (mounted) setItems(mapped)
+      } catch (e) {
+        console.error("Category load failed", e)
+        if (mounted) setError("Unable to load category items.")
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
-
-    if (categories.length > 0) {
-      loadCategoryData()
+    load()
+    return () => {
+      mounted = false
     }
-  }, [slug, categories, getItemsByCategory])
+  }, [categoryName])
 
   const handleAddToCart = (item: any) => {
     if (!isAuthenticated) {
       router.push("/login")
       return
     }
-
-    addItem({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: 1,
-      canteen: item.canteenName,
-      canteenId: item.canteenId,
-      image: item.image,
-      packaging: false,
-    })
+    addItem({ id: item.id, name: item.name, price: item.price, quantity: 1, canteen: item.canteen, image: item.image })
   }
 
   if (loading) {
@@ -77,13 +127,13 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
     )
   }
 
-  if (!category) {
+  if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center">
-          <p className="text-muted-foreground mb-4">Category not found</p>
-          <Link href="/">
-            <button className="px-4 py-2 bg-primary text-white rounded-md">Go Home</button>
+          <p className="text-destructive mb-4">{error}</p>
+          <Link href="/canteens" className="underline text-primary">
+            Back
           </Link>
         </div>
       </div>
@@ -96,12 +146,11 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
         <Link href="/" className="mr-2">
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-xl font-bold">{category.name}</h1>
+        <h1 className="text-xl font-bold">{categoryName}</h1>
       </div>
 
       <div className="container px-4 py-6">
         <div className="mb-6">
-          <p className="text-muted-foreground">{category.description}</p>
           <p className="text-sm text-muted-foreground mt-2">{items.length} items available</p>
         </div>
 
@@ -112,7 +161,7 @@ export default function CategoryPage({ params }: { params: { slug: string } }) {
                 key={item.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
               >
                 <FoodItemCard item={item} onAddToCart={handleAddToCart} />
               </motion.div>

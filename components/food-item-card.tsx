@@ -43,7 +43,14 @@ export default function FoodItemCard({ item, onAddToCart }: FoodItemCardProps) {
             <p className="text-xs text-muted-foreground mb-2">Prep time: {item.preparationTime}</p>
           )}
           <div className="flex items-center justify-between">
-            <span className="font-medium">₹{item.price}</span>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">₹{item.price}</span>
+              {item.canteen && (
+                <Badge variant="secondary" className="text-[10px]">
+                  {item.canteen}
+                </Badge>
+              )}
+            </div>
             <Button size="sm" onClick={() => onAddToCart(item)}>
               <Plus className="mr-1 h-4 w-4" />
               Add

@@ -18,10 +18,16 @@ import FoodItemCard from "@/components/food-item-card"
 import SearchBar from "@/components/search-bar"
 import { canteenService, type MenuItem } from "@/services/canteen-service"
 import { motion } from "framer-motion"
+import { useCart } from "@/hooks/use-cart"
+import { useAuth } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
 
 function SearchPageContent() {
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get("q") || ""
+  const { addItem } = useCart()
+  const { isAuthenticated } = useAuth()
+  const router = useRouter()
 
   const [query, setQuery] = useState(initialQuery)
   const [results, setResults] = useState<MenuItem[]>([])
@@ -34,12 +40,16 @@ function SearchPageContent() {
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 200])
   const [sortBy, setSortBy] = useState<string>("relevance")
 
-  // Load categories and perform initial search
+  // Load categories (from backend) and perform initial search
   useEffect(() => {
     const loadData = async () => {
       try {
-        const categoriesData = await canteenService.getCategories()
-        setCategories(categoriesData.map((cat) => cat.name))
+        const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || ""
+        const res = await fetch(`${base}/api/explore/categories`, { cache: "no-store" })
+        if (!res.ok) throw new Error(`Categories HTTP ${res.status}`)
+        const json: { code: number; message: string; data: { name: string }[] } = await res.json()
+        if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed categories fetch")
+        setCategories(json.data.map((cat) => cat.name))
 
         if (initialQuery) {
           performSearch(initialQuery)
@@ -107,6 +117,14 @@ function SearchPageContent() {
   const handleSearch = (searchQuery: string) => {
     setQuery(searchQuery)
     performSearch(searchQuery)
+  }
+
+  const handleAddToCart = (item: any) => {
+    if (!isAuthenticated) {
+      router.push("/login")
+      return
+    }
+    addItem({ id: item.id, name: item.name, price: item.price, quantity: 1, canteen: item.canteen, image: item.image })
   }
 
   const clearFilters = () => {
@@ -236,16 +254,28 @@ function SearchPageContent() {
           </div>
         ) : filteredResults.length > 0 ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredResults.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-              >
-                <FoodItemCard item={item} />
-              </motion.div>
-            ))}
+            {filteredResults.map((raw, index) => {
+              const item = {
+                id: raw.id,
+                name: raw.name,
+                price: raw.price,
+                image: raw.image,
+                description: raw.description,
+                rating: raw.rating,
+                preparationTime: raw.preparationTime,
+                canteen: (raw as any).canteen ?? (raw as MenuItem).canteenName,
+              }
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                >
+                  <FoodItemCard item={item as any} onAddToCart={handleAddToCart} />
+                </motion.div>
+              )
+            })}
           </div>
         ) : query ? (
           <div className="text-center py-12">
