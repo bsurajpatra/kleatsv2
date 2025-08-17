@@ -1,137 +1,327 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useParams } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useCart } from "@/hooks/use-cart"
-import { useCanteens } from "@/hooks/use-canteens"
 import CartIcon from "@/components/cart-icon"
 import FoodItemCard from "@/components/food-item-card"
+import { useCart } from "@/hooks/use-cart"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
-export default function CanteenPage({ params }: { params: { slug: string } }) {
-  const { slug } = params
-  const { getCanteenById, getCanteenMenu } = useCanteens()
+type CanteenDetails = {
+  CanteenName: string
+  Location?: string
+  fromTime?: string | null
+  ToTime?: string | null
+  accessTo?: string
+  poster?: string | null
+}
+
+type ApiResponse<T> = {
+  code: number
+  message: string
+  data: T
+}
+
+type Category = {
+  name: string
+  no_of_items: number
+  poster?: string | null
+  startTime?: string | null
+  endTime?: string | null
+}
+
+function isOpenNow(fromTime?: string | null, toTime?: string | null): boolean | null {
+  const start = (fromTime || "").trim()
+  const end = (toTime || "").trim()
+  if (!start || !end) return null
+  const parseTime = (t: string) => {
+    const ampmMatch = t.match(/^\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/i)
+    let hours: number, minutes: number
+    if (ampmMatch) {
+      hours = parseInt(ampmMatch[1], 10) % 12
+      if (ampmMatch[3].toUpperCase() === "PM") hours += 12
+      minutes = parseInt(ampmMatch[2], 10)
+    } else {
+      const match = t.match(/^\s*(\d{1,2}):(\d{2})\s*$/)
+      if (!match) return NaN
+      hours = parseInt(match[1], 10)
+      minutes = parseInt(match[2], 10)
+    }
+    return hours * 60 + minutes
+  }
+  const startMin = parseTime(start)
+  const endMin = parseTime(end)
+  if (isNaN(startMin) || isNaN(endMin)) return null
+  const now = new Date()
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+  if (startMin <= endMin) {
+    return nowMin >= startMin && nowMin <= endMin
+  } else {
+    return nowMin >= startMin || nowMin <= endMin
+  }
+}
+
+// Deterministic rating > 4.5 based on id
+function pseudoRating(id: string): string {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0
+  const increment = ((hash % 50) + 1) / 100 // 0.01..0.50
+  const rating = 4.5 + increment // 4.51..5.0
+  return rating.toFixed(2)
+}
+
+// Item API types
+type RawItem = {
+  ItemId: number
+  ItemName: string
+  tags?: string[]
+  Description?: string
+  Price: number
+  ava?: boolean
+  ImagePath?: string
+  category?: string
+  startTime?: string
+  endTime?: string
+  canteenId: number
+}
+
+type ItemsResponse = {
+  code: number
+  message: string
+  data: RawItem[]
+  meta?: {
+    offset: number
+    limit: number
+    total: number
+    hasMore: boolean
+  }
+}
+
+function mapToCardItem(raw: RawItem, canteenName: string, baseUrl: string) {
+  const img = raw.ImagePath
+    ? `${baseUrl}${raw.ImagePath.startsWith("/") ? raw.ImagePath : `/${raw.ImagePath}`}`
+    : "/placeholder.svg"
+  // Deterministic rating > 4.5 for items too
+  const ratingSeed = `${raw.ItemId}-${raw.ItemName}`
+  const rating = Number(pseudoRating(ratingSeed))
+  return {
+    id: raw.ItemId,
+    name: raw.ItemName,
+    price: raw.Price,
+    canteen: canteenName,
+    image: img,
+    category: raw.category,
+    description: raw.Description,
+    rating,
+  }
+}
+
+export default function CanteenPage() {
+  const { slug } = useParams<{ slug: string }>()
+  const canteenId = slug
+  const canteenIdNum = Number(canteenId)
   const { addItem } = useCart()
 
-  const [canteen, setCanteen] = useState<any>(null)
-  const [menu, setMenu] = useState<any[]>([])
+  const [details, setDetails] = useState<CanteenDetails | null>(null)
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>("all")
+  const [itemsAll, setItemsAll] = useState<RawItem[]>([])
+  const [catItemsMap, setCatItemsMap] = useState<Record<string, RawItem[]>>({})
+  const [itemsLoading, setItemsLoading] = useState<boolean>(true)
+  const [categoryLoading, setCategoryLoading] = useState<boolean>(false)
 
   useEffect(() => {
-    const loadCanteenData = async () => {
+    let mounted = true
+    const load = async () => {
+      setLoading(true)
+      setError(null)
       try {
-        setLoading(true)
-
-        // Get canteen details
-        const canteenData = getCanteenById(slug)
-        if (!canteenData) {
-          throw new Error("Canteen not found")
+        const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || ""
+        const [dRes, cRes, iRes] = await Promise.all([
+          fetch(`${base}/api/explore/canteen/details/${canteenId}`, { cache: "no-store" }),
+          fetch(`${base}/api/explore/canteen/categories/${canteenId}`, { cache: "no-store" }),
+          fetch(`${base}/api/explore/items?canteen_id=${encodeURIComponent(canteenId)}&offset=0`, {
+            cache: "no-store",
+          }),
+        ])
+        if (!dRes.ok) throw new Error(`Details HTTP ${dRes.status}`)
+        if (!cRes.ok) throw new Error(`Categories HTTP ${cRes.status}`)
+        if (!iRes.ok) throw new Error(`Items HTTP ${iRes.status}`)
+        const dJson: ApiResponse<CanteenDetails> = await dRes.json()
+        const cJson: ApiResponse<Category[]> = await cRes.json()
+        const iJson: ItemsResponse = await iRes.json()
+        if (dJson.code !== 1 || !dJson.data) throw new Error(dJson.message || "Failed details fetch")
+        if (cJson.code !== 1 || !Array.isArray(cJson.data)) throw new Error(cJson.message || "Failed categories fetch")
+        if (iJson.code !== 1 || !Array.isArray(iJson.data)) throw new Error(iJson.message || "Failed items fetch")
+        if (mounted) {
+          setDetails(dJson.data)
+          setCategories(cJson.data)
+          setItemsAll(iJson.data.filter((it) => it.ava !== false && it.canteenId === canteenIdNum))
+          setItemsLoading(false)
         }
-        setCanteen(canteenData)
-
-        // Get menu items
-        const menuData = await getCanteenMenu(slug)
-        setMenu(menuData)
-      } catch (error) {
-        console.error("Failed to load canteen data:", error)
+      } catch (e: any) {
+        console.error("Failed to load canteen", e)
+        if (mounted) setError("Unable to load canteen details.")
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
+    load()
+    return () => {
+      mounted = false
+    }
+  }, [canteenId])
 
-    loadCanteenData()
-  }, [slug, getCanteenById, getCanteenMenu])
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+
+  const posterSrc = useMemo(() => {
+    if (!details?.poster) return "/placeholder.svg"
+    return `${baseUrl}${details.poster.startsWith("/") ? details.poster : `/${details.poster}`}`
+  }, [details, baseUrl])
+
+  const openBadge = useMemo(() => {
+    const status = isOpenNow(details?.fromTime, details?.ToTime)
+    if (status === true) return "Open Now"
+    if (status === false) return "Closed"
+    return "Hours N/A"
+  }, [details])
+
+  // Fetch items by category on demand (must be before any early returns)
+  useEffect(() => {
+    const fetchByCategory = async () => {
+      if (activeTab === "all" || catItemsMap[activeTab]) return
+      setCategoryLoading(true)
+      try {
+        const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || ""
+        const res = await fetch(`${base}/api/explore/get/items-by-category/${encodeURIComponent(activeTab)}`, {
+          cache: "no-store",
+        })
+        if (!res.ok) throw new Error(`Category HTTP ${res.status}`)
+        const json: ItemsResponse = await res.json()
+        if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed category fetch")
+        const filtered = json.data.filter((it) => it.ava !== false && it.canteenId === canteenIdNum)
+        setCatItemsMap((prev) => ({ ...prev, [activeTab]: filtered }))
+      } catch (e) {
+        console.error("Category fetch failed", e)
+        setCatItemsMap((prev) => ({ ...prev, [activeTab]: [] }))
+      } finally {
+        setCategoryLoading(false)
+      }
+    }
+    fetchByCategory()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, canteenIdNum])
+
+  const displayedItems = useMemo(() => {
+    if (!details) return []
+    const items = activeTab === "all" ? itemsAll : catItemsMap[activeTab] || []
+    return items.map((it) => mapToCardItem(it, details.CanteenName, baseUrl))
+  }, [activeTab, itemsAll, catItemsMap, details, baseUrl])
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading menu...</p>
+          <p className="text-muted-foreground">Loading canteen...</p>
         </div>
       </div>
     )
   }
 
-  if (!canteen) {
+  if (error || !details) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-muted-foreground mb-4">Canteen not found</p>
-          <Link href="/">
-            <button className="px-4 py-2 bg-primary text-white rounded-md">Go Home</button>
-          </Link>
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error || "Canteen not found"}</AlertDescription>
+          </Alert>
+          <div className="mt-4 text-center">
+            <Link href="/canteens" className="underline text-primary">
+              Back to canteens
+            </Link>
+          </div>
         </div>
       </div>
     )
   }
 
-  const categories = ["all", ...canteen.categories]
-  const filteredMenu = activeTab === "all" ? menu : menu.filter((item) => item.category === activeTab)
+  const tabKeys = ["all", ...categories.map((c) => c.name)]
 
   const handleAddToCart = (item: any) => {
-    addItem({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: 1,
-      canteen: canteen.name,
-      canteenId: canteen.id,
-      image: item.image,
-    })
+    addItem({ id: item.id, name: item.name, price: item.price, quantity: 1, canteen: item.canteen, image: item.image })
   }
 
   return (
     <div className="min-h-screen pb-16">
       <div className="relative h-48">
-        <Link href="/" className="absolute left-4 top-4 z-10 rounded-full bg-background/80 p-2">
+        <Link href="/canteens" className="absolute left-4 top-4 z-10 rounded-full bg-background/80 p-2">
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <Image src={canteen.image || "/placeholder.svg"} alt={canteen.name} fill className="object-cover" />
+        <Image src={posterSrc} alt={details.CanteenName} fill className="object-cover" />
       </div>
 
       <div className="container px-4 py-6">
         <div className="mb-6">
           <div className="flex items-center justify-between">
-            <h1 className="text-2xl font-bold">{canteen.name}</h1>
-            <Badge className="bg-primary">★ {canteen.rating}</Badge>
+            <h1 className="text-2xl font-bold">{details.CanteenName}</h1>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary">{openBadge}</Badge>
+              <Badge className="bg-primary">★ {pseudoRating(canteenId)}</Badge>
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">{canteen.description}</p>
-          <p className="text-sm text-muted-foreground">Preparation time: {canteen.preparationTime}</p>
-          <p className="text-sm text-muted-foreground">Hours: {canteen.openingHours}</p>
+          {details.Location && <p className="text-sm text-muted-foreground">{details.Location}</p>}
+          <p className="text-sm text-muted-foreground">
+            {details.fromTime || "?"} - {details.ToTime || "?"}
+          </p>
         </div>
 
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6 w-full overflow-x-auto">
-            {categories.map((category) => (
-              <TabsTrigger key={category} value={category} className="capitalize">
-                {category}
-              </TabsTrigger>
-            ))}
+            {tabKeys.map((key) => {
+              const cat = categories.find((c) => c.name === key)
+              return (
+                <TabsTrigger key={key} value={key} className="capitalize whitespace-nowrap">
+                  {key}
+                  {cat && (
+                    <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">{cat.no_of_items}</span>
+                  )}
+                </TabsTrigger>
+              )
+            })}
           </TabsList>
           <TabsContent value={activeTab} className="mt-0">
-            <div className="grid gap-4">
-              {filteredMenu.length > 0 ? (
-                filteredMenu.map((item) => (
-                  <FoodItemCard
-                    key={item.id}
-                    item={{
-                      ...item,
-                      canteen: canteen.name,
-                    }}
-                    onAddToCart={handleAddToCart}
-                  />
-                ))
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No items available in this category</p>
-                </div>
-              )}
-            </div>
+            {activeTab === "all" && itemsLoading ? (
+              <div className="grid gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-24 w-full animate-pulse rounded-lg bg-muted" />
+                ))}
+              </div>
+            ) : categoryLoading && activeTab !== "all" && !catItemsMap[activeTab] ? (
+              <div className="grid gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-24 w-full animate-pulse rounded-lg bg-muted" />
+                ))}
+              </div>
+            ) : displayedItems.length > 0 ? (
+              <div className="grid gap-4">
+                {displayedItems.map((item) => (
+                  <FoodItemCard key={item.id} item={item} onAddToCart={handleAddToCart} />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No items available in this category</p>
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import BottomNavigation from "@/components/bottom-navigation"
 import CartIcon from "@/components/cart-icon"
 import Footer from "@/components/footer"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
@@ -13,69 +14,109 @@ import { motion } from "framer-motion"
 // Import SearchBar
 import SearchBar from "@/components/search-bar"
 
-// Sample canteens data
-const canteens = [
-  {
-    id: "kl-adda",
-    name: "KL Adda",
-    image: "/placeholder.svg?height=200&width=300",
-    rating: 4.5,
-    preparationTime: "10-15 min",
-    slug: "kl-adda",
-    description: "South Indian and North Indian cuisine",
-    openingHours: "8:00 AM - 8:00 PM",
-  },
-  {
-    id: "satish",
-    name: "Satish",
-    image: "/placeholder.svg?height=200&width=300",
-    rating: 4.2,
-    preparationTime: "15-20 min",
-    slug: "satish",
-    description: "Chinese and snacks",
-    openingHours: "9:00 AM - 9:00 PM",
-  },
-  {
-    id: "naturals",
-    name: "Naturals",
-    image: "/placeholder.svg?height=200&width=300",
-    rating: 4.7,
-    preparationTime: "5-10 min",
-    slug: "naturals",
-    description: "Ice cream and beverages",
-    openingHours: "10:00 AM - 10:00 PM",
-  },
-  {
-    id: "juice-junction",
-    name: "Juice Junction",
-    image: "/placeholder.svg?height=200&width=300",
-    rating: 4.3,
-    preparationTime: "5-10 min",
-    slug: "juice-junction",
-    description: "Fresh juices and smoothies",
-    openingHours: "8:00 AM - 7:00 PM",
-  },
-  {
-    id: "campus-cafe",
-    name: "Campus Cafe",
-    image: "/placeholder.svg?height=200&width=300",
-    rating: 4.1,
-    preparationTime: "10-15 min",
-    slug: "campus-cafe",
-    description: "Multi-cuisine restaurant",
-    openingHours: "8:30 AM - 9:30 PM",
-  },
-]
+type ApiCanteen = {
+  canteenId: number
+  CanteenName: string
+  Location?: string
+  fromTime?: string | null
+  ToTime?: string | null
+  accessTo?: string
+  poster?: string | null
+}
+
+type ApiResponse = {
+  code: number
+  message: string
+  data: ApiCanteen[]
+}
+
+function isOpenNow(fromTime?: string | null, toTime?: string | null): boolean | null {
+  // Return true if currently open, false if closed, null if timing unknown/invalid
+  const start = (fromTime || "").trim()
+  const end = (toTime || "").trim()
+  if (!start || !end) return null
+
+  const parseTime = (t: string) => {
+    // support HH:mm or H:mm, optionally with AM/PM; fall back to invalid
+    const ampmMatch = t.match(/^\s*(\d{1,2}):(\d{2})\s*(AM|PM)\s*$/i)
+    let hours: number, minutes: number
+    if (ampmMatch) {
+      hours = parseInt(ampmMatch[1], 10) % 12
+      if (ampmMatch[3].toUpperCase() === "PM") hours += 12
+      minutes = parseInt(ampmMatch[2], 10)
+    } else {
+      const match = t.match(/^\s*(\d{1,2}):(\d{2})\s*$/)
+      if (!match) return NaN
+      hours = parseInt(match[1], 10)
+      minutes = parseInt(match[2], 10)
+    }
+    return hours * 60 + minutes
+  }
+
+  const startMin = parseTime(start)
+  const endMin = parseTime(end)
+  if (isNaN(startMin) || isNaN(endMin)) return null
+
+  const now = new Date()
+  const nowMin = now.getHours() * 60 + now.getMinutes()
+
+  // Handle overnight windows (e.g., 22:00 - 06:00)
+  if (startMin <= endMin) {
+    return nowMin >= startMin && nowMin <= endMin
+  } else {
+    return nowMin >= startMin || nowMin <= endMin
+  }
+}
 
 export default function CanteensPage() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [data, setData] = useState<ApiCanteen[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Filter canteens based on search query
-  const filteredCanteens = canteens.filter(
-    (canteen) =>
-      canteen.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      canteen.description.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  useEffect(() => {
+    let mounted = true
+    const fetchCanteens = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || ""
+        const res = await fetch(`${base}/api/explore/canteens`, { cache: "no-store" })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const json: ApiResponse = await res.json()
+        if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed to fetch")
+        if (mounted) setData(json.data)
+      } catch (e: any) {
+        console.error("Failed to load canteens", e)
+        if (mounted) setError("Unable to load canteens right now.")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+    fetchCanteens()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+
+  const openOrUnknown = useMemo(() => {
+    return data.filter((c) => {
+      const open = isOpenNow(c.fromTime, c.ToTime)
+      return open === true || open === null
+    })
+  }, [data])
+
+  const filteredCanteens = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return openOrUnknown
+    return openOrUnknown.filter((c) => {
+      const name = (c.CanteenName || "").toLowerCase()
+      const loc = (c.Location || "").toLowerCase()
+      return name.includes(q) || loc.includes(q)
+    })
+  }, [openOrUnknown, searchQuery])
 
   return (
     <main className="min-h-screen pb-24 page-transition">
@@ -88,40 +129,70 @@ export default function CanteensPage() {
           <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search for canteens..." />
         </div>
 
-        <div className="grid gap-4">
-          {filteredCanteens.map((canteen, index) => (
-            <motion.div
-              key={canteen.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: index * 0.1 }}
-            >
-              <Link href={`/canteen/${canteen.slug}`}>
-                <Card className="card-hover overflow-hidden">
-                  <CardContent className="p-0">
-                    <div className="relative h-40">
-                      <Image
-                        src={canteen.image || "/placeholder.svg"}
-                        alt={canteen.name}
-                        fill
-                        className="object-cover"
-                      />
-                      <Badge className="absolute right-2 top-2 bg-primary">★ {canteen.rating}</Badge>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="text-lg font-semibold">{canteen.name}</h3>
-                      <p className="text-sm text-muted-foreground">{canteen.description}</p>
-                      <div className="mt-2 flex justify-between">
-                        <p className="text-xs text-muted-foreground">Prep time: {canteen.preparationTime}</p>
-                        <p className="text-xs text-muted-foreground">{canteen.openingHours}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            </motion.div>
-          ))}
-        </div>
+        {error && (
+          <div className="mb-4">
+            <Alert variant="destructive">
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          </div>
+        )}
+
+        {loading ? (
+          <div className="grid gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-40 w-full animate-pulse rounded-lg bg-muted" />
+            ))}
+          </div>
+        ) : filteredCanteens.length === 0 ? (
+          <div className="text-center text-sm text-muted-foreground">No canteens available right now.</div>
+        ) : (
+          <div className="grid gap-4">
+            {filteredCanteens.map((canteen, index) => {
+              const hoursUnknown = isOpenNow(canteen.fromTime, canteen.ToTime) === null
+              const badgeText = hoursUnknown
+                ? "Hours N/A"
+                : "Open Now"
+              const imgSrc = canteen.poster
+                ? `${baseUrl}${canteen.poster.startsWith("/") ? canteen.poster : `/${canteen.poster}`}`
+                : "/placeholder.svg"
+              return (
+                <motion.div
+                  key={canteen.canteenId}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.05 }}
+                >
+                  <Link href={`/canteen/${canteen.canteenId}`}>
+                    <Card className="card-hover overflow-hidden">
+                      <CardContent className="p-0">
+                        <div className="relative h-40">
+                          <Image src={imgSrc} alt={canteen.CanteenName} fill className="object-cover" />
+                          <Badge className="absolute right-2 top-2 bg-primary">{badgeText}</Badge>
+                        </div>
+                        <div className="p-4">
+                          <h3 className="text-lg font-semibold">{canteen.CanteenName}</h3>
+                          {canteen.Location && (
+                            <p className="text-sm text-muted-foreground">{canteen.Location}</p>
+                          )}
+                          <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+                            {(canteen.fromTime || canteen.ToTime) ? (
+                              <p>
+                                {canteen.fromTime || "?"} - {canteen.ToTime || "?"}
+                              </p>
+                            ) : (
+                              <p>Timing info not available</p>
+                            )}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                </motion.div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <Footer />

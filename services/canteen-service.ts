@@ -212,14 +212,9 @@ class CanteenService {
     },
   ]
 
-  // Check if API is available
+  // Check if API is available (disabled for now to avoid hitting non-existent endpoints)
   private async isApiAvailable(): Promise<boolean> {
-    try {
-      await apiClient.get("/health")
-      return true
-    } catch {
-      return false
-    }
+    return false
   }
 
   // Get all canteens
