@@ -21,11 +21,21 @@ import { motion } from "framer-motion"
 import { useCart } from "@/hooks/use-cart"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 function SearchPageContent() {
   const searchParams = useSearchParams()
   const initialQuery = searchParams.get("q") || ""
-  const { addItem } = useCart()
+  const { addItem, items: cartItems, clearCart, updateQuantity, removeItem } = useCart()
   const { isAuthenticated } = useAuth()
   const router = useRouter()
 
@@ -34,6 +44,13 @@ function SearchPageContent() {
   const [filteredResults, setFilteredResults] = useState<MenuItem[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [categories, setCategories] = useState<string[]>([])
+  const [busyItemId, setBusyItemId] = useState<number | null>(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [pendingAddItem, setPendingAddItem] = useState<any | null>(null)
+
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+  const getToken = () =>
+    (typeof window !== "undefined" && (localStorage.getItem("auth_token") || localStorage.getItem("token"))) || null
 
   // Filter states
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
@@ -119,12 +136,165 @@ function SearchPageContent() {
     performSearch(searchQuery)
   }
 
-  const handleAddToCart = (item: any) => {
+  const clearBackendCart = async () => {
+    const token = getToken()
+    if (!token) return
+    try {
+      await fetch(`${baseUrl}/api/user/cart/clearCart`, { method: "DELETE", headers: { Authorization: token } })
+    } catch {}
+  }
+
+  const addBackendToCart = async (itemId: number, quantity = 1) => {
+    const token = getToken()
+    if (!token) throw new Error("Not authenticated")
+    const url = `${baseUrl}/api/user/cart/addToCart?id=${encodeURIComponent(String(itemId))}&quantity=${encodeURIComponent(String(quantity))}`
+    const res = await fetch(url, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
+    if (!res.ok) throw new Error(await res.text())
+  }
+
+  const updateBackendCartQuantity = async (itemId: number, quantity: number) => {
+    const token = getToken()
+    if (!token) throw new Error("Not authenticated")
+    const res = await fetch(`${baseUrl}/api/user/cart/updateCart`, {
+      method: "POST",
+      headers: {
+        Authorization: token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ itemId, quantity }),
+    })
+    if (!res.ok) throw new Error(await res.text())
+  }
+
+  const syncLocalCartFromBackend = async () => {
+    const token = getToken()
+    if (!token) return
+    try {
+      const res = await fetch(`${baseUrl}/api/user/cart/getCartItems`, {
+        method: "GET",
+        headers: { Authorization: token },
+        cache: "no-store",
+      })
+      if (!res.ok) return
+      const data = await res.json()
+      const payload = data?.data
+      if (!payload) return
+      clearCart()
+      const canteenName = payload.CanteenName || ""
+      const itemsArr: any[] = Array.isArray(payload.cart) ? payload.cart : []
+      itemsArr.forEach((it) => {
+        const img = it.ImagePath
+          ? `${baseUrl}${String(it.ImagePath).startsWith("/") ? it.ImagePath : `/${it.ImagePath}`}`
+          : "/placeholder.svg"
+        const qty = Number(it.quantity ?? 1) || 1
+        addItem({ id: Number(it.ItemId), name: it.ItemName, price: Number(it.Price) || 0, quantity: qty, canteen: canteenName, image: img })
+      })
+    } catch {}
+  }
+
+  const handleAddToCart = async (item: any) => {
     if (!isAuthenticated) {
       router.push("/login")
       return
     }
-    addItem({ id: item.id, name: item.name, price: item.price, quantity: 1, canteen: item.canteen, image: item.image })
+    try {
+      let different = false
+      const token = getToken()
+      if (token) {
+        try {
+          const res = await fetch(`${baseUrl}/api/user/cart/getCartItems`, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
+          if (res.ok) {
+            const data = await res.json()
+            const meta = data?.data
+            if (meta && Array.isArray(meta.cart) && meta.cart.length > 0) {
+              const backendCanteenId = Number(meta.canteenId)
+              const currentCanteenId = Number((item as any).canteenId)
+              if (!Number.isNaN(backendCanteenId) && !Number.isNaN(currentCanteenId)) {
+                different = backendCanteenId !== currentCanteenId
+              } else {
+                const backendName = String(meta.CanteenName || meta.canteenName || "").toLowerCase()
+                const currentName = String(item.canteen || "").toLowerCase()
+                if (backendName && currentName) different = backendName !== currentName
+              }
+            }
+          }
+        } catch {}
+      } else if (cartItems.length > 0) {
+        different = cartItems[0].canteen !== item.canteen
+      }
+      if (different) {
+        setPendingAddItem(item)
+        setShowClearConfirm(true)
+        return
+      }
+      await handleIncrement(item)
+    } catch {
+      addItem({ id: item.id, name: item.name, price: item.price, quantity: 1, canteen: item.canteen, image: item.image })
+    }
+  }
+
+  const handleIncrement = async (item: any) => {
+    const token = getToken()
+    const current = cartItems.find((i) => i.id === item.id)?.quantity || 0
+    if (current === 0) {
+      addItem({ id: item.id, name: item.name, price: item.price, quantity: 1, canteen: item.canteen, image: item.image })
+    } else {
+      updateQuantity(item.id, current + 1)
+    }
+    setBusyItemId(item.id)
+    if (!token) {
+      setBusyItemId(null)
+      return
+    }
+    try {
+      let existingQty = 0
+      try {
+        const res = await fetch(`${baseUrl}/api/user/cart/getCartItems`, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
+        if (res.ok) {
+          const data = await res.json()
+          const arr: any[] = Array.isArray(data?.data?.cart) ? data.data.cart : []
+          const found = arr.find((it) => Number(it.ItemId) === Number(item.id))
+          if (found) existingQty = Number(found.quantity ?? 1) || 1
+        }
+      } catch {}
+      if (existingQty > 0) await updateBackendCartQuantity(Number(item.id), existingQty + 1)
+      else await addBackendToCart(item.id, 1)
+      await syncLocalCartFromBackend()
+    } catch {
+      // keep optimistic state
+    } finally {
+      setBusyItemId(null)
+    }
+  }
+
+  const handleDecrement = async (item: any) => {
+    const token = getToken()
+    const current = cartItems.find((i) => i.id === item.id)?.quantity || 0
+    const next = Math.max(0, current - 1)
+    if (next === 0) removeItem(item.id)
+    else updateQuantity(item.id, next)
+    setBusyItemId(item.id)
+    if (!token) {
+      setBusyItemId(null)
+      return
+    }
+    try {
+      if (next > 0) {
+        await updateBackendCartQuantity(Number(item.id), next)
+      } else {
+        try {
+          await fetch(`${baseUrl}/api/user/cart/removeItemCart?id=${encodeURIComponent(String(item.id))}`, {
+            method: "DELETE",
+            headers: { Authorization: token },
+          })
+        } catch {}
+      }
+      await syncLocalCartFromBackend()
+    } catch {
+      // keep optimistic state
+    } finally {
+      setBusyItemId(null)
+    }
   }
 
   const clearFilters = () => {
@@ -240,7 +410,7 @@ function SearchPageContent() {
         </div>
 
         {/* Results */}
-        {isLoading ? (
+  {isLoading ? (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {[...Array(6)].map((_, i) => (
               <Card key={i} className="animate-pulse">
@@ -264,6 +434,7 @@ function SearchPageContent() {
                 rating: raw.rating,
                 preparationTime: raw.preparationTime,
                 canteen: (raw as any).canteen ?? (raw as MenuItem).canteenName,
+                canteenId: ((): number | undefined => { const n = Number((raw as any).canteenId); return Number.isFinite(n) ? n : undefined })(),
               }
               return (
                 <motion.div
@@ -272,7 +443,14 @@ function SearchPageContent() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.1 }}
                 >
-                  <FoodItemCard item={item as any} onAddToCart={handleAddToCart} />
+                  <FoodItemCard
+                    item={item as any}
+                    quantity={cartItems.find((i) => i.id === item.id)?.quantity || 0}
+                    isLoading={busyItemId === item.id}
+                    onAddToCart={() => handleAddToCart(item)}
+                    onIncrement={() => handleIncrement(item)}
+                    onDecrement={() => handleDecrement(item)}
+                  />
                 </motion.div>
               )
             })}
@@ -294,6 +472,32 @@ function SearchPageContent() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={showClearConfirm} onOpenChange={setShowClearConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Switch canteen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Adding this item will clear the items from your current cart. Do you want to continue?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => { setPendingAddItem(null) }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                try { await clearBackendCart() } catch {}
+                clearCart()
+                const toAdd = pendingAddItem
+                setPendingAddItem(null)
+                setShowClearConfirm(false)
+                if (toAdd) await handleIncrement(toAdd)
+              }}
+            >
+              Continue
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Footer />
       <CartIcon />

@@ -58,7 +58,7 @@ export default function OrderDetailsPage() {
   return (
     <div className="min-h-screen pb-16 page-transition">
       <div className="sticky top-0 z-10 flex items-center bg-background p-4 shadow-sm">
-        <Link href="/quick-order" className="mr-2">
+  <Link href="/orders" className="mr-2">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <h1 className="text-xl font-bold">Order Details</h1>

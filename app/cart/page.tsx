@@ -73,7 +73,7 @@ export default function CartPage() {
     <div className="min-h-screen pb-16 page-transition">
       <div className="sticky top-0 z-10 flex items-center justify-between bg-background p-4 shadow-sm">
         <div className="flex items-center">
-          <Link href="/" className="mr-2">
+          <Link href={(typeof window !== "undefined" && (localStorage.getItem("last_canteen_id") ? `/canteen/${localStorage.getItem("last_canteen_id")}` : "/canteens")) || "/canteens"} className="mr-2">
             <ArrowLeft className="h-5 w-5" />
           </Link>
           <h1 className="text-xl font-bold">Your Cart</h1>

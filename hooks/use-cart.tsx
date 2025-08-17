@@ -98,7 +98,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
 
   const togglePackaging = (id: number) => {
-    setItems((prevItems) => prevItems.map((item) => (item.id === id ? { ...item, packaging: !item.packaging } : item)))
+    setItems((prevItems) => {
+      const target = prevItems.find((i) => i.id === id)
+      const newVal = !target?.packaging
+      return prevItems.map((item) => ({ ...item, packaging: newVal }))
+    })
   }
 
   const clearCart = () => {

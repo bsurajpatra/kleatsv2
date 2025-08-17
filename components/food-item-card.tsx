@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
-import { Plus } from "lucide-react"
+import { Plus, Minus, Loader2 } from "lucide-react"
 import FavoriteButton from "./favorite-button"
 import { Badge } from "@/components/ui/badge"
 
@@ -19,10 +19,14 @@ interface FoodItemCardProps {
     rating?: number
     preparationTime?: string
   }
-  onAddToCart: (item: any) => void
+  onAddToCart?: (item: any) => void
+  quantity?: number
+  onIncrement?: () => void
+  onDecrement?: () => void
+  isLoading?: boolean
 }
 
-export default function FoodItemCard({ item, onAddToCart }: FoodItemCardProps) {
+export default function FoodItemCard({ item, onAddToCart, quantity = 0, onIncrement, onDecrement, isLoading = false }: FoodItemCardProps) {
   return (
     <Card className="overflow-hidden">
       <CardContent className="flex p-0">
@@ -51,10 +55,22 @@ export default function FoodItemCard({ item, onAddToCart }: FoodItemCardProps) {
                 </Badge>
               )}
             </div>
-            <Button size="sm" onClick={() => onAddToCart(item)}>
-              <Plus className="mr-1 h-4 w-4" />
-              Add
-            </Button>
+            {quantity > 0 ? (
+              <div className="flex items-center gap-2">
+                <Button size="icon" variant="outline" disabled={isLoading} onClick={onDecrement} className="h-8 w-8">
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Minus className="h-4 w-4" />}
+                </Button>
+                <span className="w-6 text-center text-sm font-medium">{quantity}</span>
+                <Button size="icon" variant="default" disabled={isLoading} onClick={onIncrement} className="h-8 w-8">
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                </Button>
+              </div>
+            ) : (
+              <Button size="sm" disabled={isLoading} onClick={() => (onAddToCart ? onAddToCart(item) : onIncrement?.())}>
+                {isLoading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
+                {isLoading ? "Adding" : "Add"}
+              </Button>
+            )}
           </div>
         </div>
         <div className="relative h-auto w-24">

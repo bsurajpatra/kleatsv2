@@ -24,7 +24,7 @@ export default function BottomNavigation() {
     },
     {
       name: isCanteenOwner ? "Dashboard" : "Orders",
-      href: isCanteenOwner ? "/dashboard" : "/quick-order",
+      href: isCanteenOwner ? "/dashboard" : "/orders",
       icon: Clock,
     },
     {

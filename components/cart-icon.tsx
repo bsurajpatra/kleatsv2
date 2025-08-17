@@ -7,7 +7,7 @@ import Link from "next/link"
 import { useCart } from "@/hooks/use-cart"
 
 export default function CartIcon() {
-  const { items, totalPrice } = useCart()
+  const { items, totalPrice, totalItems } = useCart()
   const [isMounted, setIsMounted] = useState(false)
   const [isAnimating, setIsAnimating] = useState(false)
 
@@ -16,12 +16,12 @@ export default function CartIcon() {
   }, [])
 
   useEffect(() => {
-    if (items.length > 0) {
+    if (totalItems > 0) {
       setIsAnimating(true)
       const timer = setTimeout(() => setIsAnimating(false), 1000)
       return () => clearTimeout(timer)
     }
-  }, [items.length])
+  }, [totalItems])
 
   if (!isMounted) return null
 
@@ -37,9 +37,9 @@ export default function CartIcon() {
           <span className="text-xs font-medium">₹{totalPrice}</span>
           <span className="text-xs">View Cart</span>
         </div>
-        {items.length > 0 && (
+    {totalItems > 0 && (
           <span className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-bold text-primary border-2 border-primary">
-            {items.length}
+      {totalItems}
           </span>
         )}
       </Button>
