@@ -7,7 +7,13 @@ import dns from "dns"
 
 export async function GET(req: Request) {
   // This endpoint tests connectivity to the backend
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://188.245.112.188:3000"
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL
+  if (!apiUrl) {
+    return new Response(
+      JSON.stringify({ error: "NEXT_PUBLIC_API_URL not set" }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    )
+  }
   const results: Record<string, any> = {
     timestamp: new Date().toISOString(),
     tests: {},

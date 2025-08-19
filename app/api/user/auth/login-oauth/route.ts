@@ -42,7 +42,13 @@ export async function POST(req: Request) {
       })
     }
 
-    const base = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "http://188.245.112.188:3000"
+    const base = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL
+    if (!base) {
+      return new Response(
+        JSON.stringify({ error: "API base URL not configured", hint: "Set API_BASE_URL or NEXT_PUBLIC_API_URL" }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      )
+    }
     const baseTrimmed = base.replace(/\/$/, "")
     console.log(`Using API base URL: ${baseTrimmed}`)
 
@@ -52,7 +58,7 @@ export async function POST(req: Request) {
       return new Response(
         JSON.stringify({
           error: "Misconfiguration: API base points to this app",
-          hint: "Set NEXT_PUBLIC_API_URL or API_BASE_URL to your backend (e.g., http://188.245.112.188:3000)",
+          hint: "Set NEXT_PUBLIC_API_URL or API_BASE_URL to your backend (e.g., https://api.yourdomain.com)",
           host,
           base: baseTrimmed,
         }),

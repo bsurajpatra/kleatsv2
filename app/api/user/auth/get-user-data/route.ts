@@ -14,7 +14,13 @@ export async function POST(req: Request) {
       })
     }
 
-    const base = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "http://188.245.112.188:3000"
+    const base = process.env.API_BASE_URL || process.env.NEXT_PUBLIC_API_URL
+    if (!base) {
+      return new Response(
+        JSON.stringify({ error: "API base URL not configured", hint: "Set API_BASE_URL or NEXT_PUBLIC_API_URL" }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      )
+    }
     const baseTrimmed = base.replace(/\/$/, "")
     const targetPath = "/api/User/auth/get-user-data"
     const targetUrl = new URL(`${baseTrimmed}${targetPath}`)
