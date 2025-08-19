@@ -44,6 +44,11 @@ export default function Footer() {
                  ContactUs
                  </Link>
                </li>
+               <li>
+                 <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary">
+                   Privacy Policy
+                 </Link>
+               </li>
             </ul>
           </div>
 
@@ -64,6 +69,28 @@ export default function Footer() {
                 <span className="sr-only">Twitter</span>
               </a>
             </div>
+          </div>
+
+          {/* Learn More section with ordered policy links */}
+          <div>
+            <h3 className="mb-3 text-sm font-medium">Learn More</h3>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <Link href="/terms" className="text-muted-foreground hover:text-primary">
+                  Terms & Conditions
+                </Link>
+              </li>
+              <li>
+                <Link href="/refund-policy" className="text-muted-foreground hover:text-primary">
+                  Refund Policy
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary">
+                  Privacy Policy
+                </Link>
+              </li>
+            </ul>
           </div>
         </div>
 
