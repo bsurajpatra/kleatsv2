@@ -20,10 +20,15 @@ import Image from "next/image"
 import Link from "next/link"
 import SearchBar from "@/components/search-bar"
 import { isOpenNow } from "@/lib/utils"
+import LockOverlay from "@/components/lock-overlay"
 // import ContactUs from "./contact/page"
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(true)
+  const [locked, setLocked] = useState<boolean>(() => {
+    const v = process.env.NEXT_PUBLIC_LOCK
+    return typeof v === "string" && /LOCK/i.test(v)
+  })
   const [searchQuery, setSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<MenuItem[]>([])
   const [isSearching, setIsSearching] = useState(false)
@@ -195,7 +200,9 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen pb-24 page-transition">
+    <>
+    <LockOverlay open={locked} onUnlock={() => setLocked(false)} />
+    <main className={`min-h-screen pb-24 page-transition ${locked ? "blur-sm pointer-events-none select-none" : ""}`}>
       {/* Top Bar */}
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 border-b">
         <div className="container mx-auto flex items-center justify-between">
@@ -547,6 +554,6 @@ export default function Home() {
       <Footer />
       <BottomNavigation />
     </main>
-
+    </>
   )
 }
