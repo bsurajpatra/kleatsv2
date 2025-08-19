@@ -1,0 +1,64 @@
+name: Deploy to Server
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Stop service
+        run: sudo systemctl stop kleats || true
+
+      - name: Sync code to deployment directory (/root/kleatsv2)
+        run: |
+          sudo mkdir -p /root/kleatsv2
+          if ! command -v rsync >/dev/null 2>&1; then \
+            echo "rsync not found; installing"; \
+            sudo apt-get update -y && sudo apt-get install -y rsync; \
+          fi
+          # Sync repo while preserving server-only files and persistent assets
+          # - Keep: .env*, public/uploads, existing node_modules if any (we'll reinstall), and .next will be rebuilt
+          sudo rsync -a --delete \
+            --exclude='.git' \
+            --exclude='.github' \
+            --exclude='node_modules' \
+            --exclude='.next' \
+            --exclude='.env' \
+            --exclude='.env.local' \
+            --exclude='.env.production' \
+            --exclude='.env.*' \
+            --exclude='public/uploads' \
+            "$GITHUB_WORKSPACE/" /root/kleatsv2/
+
+      - name: Install dependencies
+        working-directory: /root/kleatsv2
+        run: sudo --preserve-env=PATH,PNPM_HOME pnpm install --frozen-lockfile
+
+      - name: Clean previous build artifacts
+        working-directory: /root/kleatsv2
+        run: sudo rm -rf .next
+
+      - name: Build
+        working-directory: /root/kleatsv2
+        env:
+          NODE_ENV: production
+        run: sudo --preserve-env=PATH,PNPM_HOME pnpm build
+
+      - name: Restart service
+        run: sudo systemctl restart kleats
