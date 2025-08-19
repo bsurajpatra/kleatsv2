@@ -63,7 +63,7 @@ export default function ContactUs() {
 
       {/* Footer */}
       <footer className="bg-gray-800 text-white text-center py-4 mt-10">
-        &copy; {new Date().getFullYear()} KL Eats. All rights reserved.
+        &copy; {new Date().getFullYear()} KL Eats : A Unit of Equitech Private Limited. All rights reserved.
       </footer>
     </div>
   );

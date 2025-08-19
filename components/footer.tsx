@@ -68,7 +68,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-8 border-t pt-6 text-center text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} KL-Eats. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} KL Eats : A Unit of Equitech Private Limited. All rights reserved.</p>
         </div>
       </div>
     </footer>
