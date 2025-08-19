@@ -56,36 +56,36 @@ jobs:
 
       - name: Install dependencies (yarn)
         if: contains(steps.detect_pm.outputs.pm, 'yarn')
-        run: sudo -n env PATH="$PATH" YARN_CACHE_FOLDER="$YARN_CACHE_FOLDER" bash -lc 'cd /root/kleatsv2 && corepack yarn install --immutable || corepack yarn install'
+        run: sudo -n /bin/bash -lc "cd /root/kleatsv2 && export PATH=\"$PATH\" YARN_CACHE_FOLDER=\"$YARN_CACHE_FOLDER\" && corepack yarn install --immutable || corepack yarn install"
 
       - name: Install dependencies (pnpm)
         if: contains(steps.detect_pm.outputs.pm, 'pnpm')
-        run: sudo -n env PATH="$PATH" PNPM_HOME="$PNPM_HOME" bash -lc 'cd /root/kleatsv2 && corepack pnpm install --frozen-lockfile'
+        run: sudo -n /bin/bash -lc "cd /root/kleatsv2 && export PATH=\"$PATH\" PNPM_HOME=\"$PNPM_HOME\" && corepack pnpm install --frozen-lockfile"
 
       - name: Install dependencies (npm fallback)
         if: steps.detect_pm.outputs.pm == ''
-        run: sudo -n env PATH="$PATH" bash -lc 'cd /root/kleatsv2 && if [ -f package-lock.json ]; then npm ci; else npm install; fi'
+        run: sudo -n /bin/bash -lc "cd /root/kleatsv2 && export PATH=\"$PATH\" && if [ -f package-lock.json ]; then npm ci; else npm install; fi"
 
       - name: Clean previous build artifacts
-        run: sudo -n bash -lc 'cd /root/kleatsv2 && rm -rf .next'
+        run: sudo -n /bin/bash -lc "cd /root/kleatsv2 && rm -rf .next"
 
       - name: Build (yarn)
         if: contains(steps.detect_pm.outputs.pm, 'yarn')
         env:
           NODE_ENV: production
-        run: sudo -n env PATH="$PATH" NODE_ENV="$NODE_ENV" bash -lc 'cd /root/kleatsv2 && corepack yarn build'
+        run: sudo -n /bin/bash -lc "cd /root/kleatsv2 && export PATH=\"$PATH\" NODE_ENV=\"$NODE_ENV\" && corepack yarn build"
 
       - name: Build (pnpm)
         if: contains(steps.detect_pm.outputs.pm, 'pnpm')
         env:
           NODE_ENV: production
-        run: sudo -n env PATH="$PATH" PNPM_HOME="$PNPM_HOME" NODE_ENV="$NODE_ENV" bash -lc 'cd /root/kleatsv2 && corepack pnpm build'
+        run: sudo -n /bin/bash -lc "cd /root/kleatsv2 && export PATH=\"$PATH\" PNPM_HOME=\"$PNPM_HOME\" NODE_ENV=\"$NODE_ENV\" && corepack pnpm build"
 
       - name: Build (npm fallback)
         if: steps.detect_pm.outputs.pm == ''
         env:
           NODE_ENV: production
-        run: sudo -n env PATH="$PATH" NODE_ENV="$NODE_ENV" bash -lc 'cd /root/kleatsv2 && npm run build'
+        run: sudo -n /bin/bash -lc "cd /root/kleatsv2 && export PATH=\"$PATH\" NODE_ENV=\"$NODE_ENV\" && npm run build"
 
       - name: Restart service
         run: sudo systemctl restart kleats
