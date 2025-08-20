@@ -23,6 +23,8 @@ async function proxy(req: Request, ctx: { params: { path?: string[] } }) {
     if (["host", "connection", "content-length", "accept-encoding"].includes(k)) return
     upstreamHeaders.set(key, value)
   })
+  // Ensure backend responds uncompressed to avoid decoding issues over proxy
+  upstreamHeaders.set("accept-encoding", "identity")
 
   // Read body for non-GET/HEAD to avoid Node fetch duplex requirement
   let body: ArrayBuffer | undefined = undefined
@@ -41,8 +43,10 @@ async function proxy(req: Request, ctx: { params: { path?: string[] } }) {
 
   // Pass-through response
   const headers = new Headers(resp.headers)
-  // Optionally strip hop-by-hop headers
+  // Strip hop-by-hop or mismatched encoding/length headers since body is already decoded by fetch
   headers.delete("transfer-encoding")
+  headers.delete("content-encoding")
+  headers.delete("content-length")
 
   return new Response(resp.body, {
     status: resp.status,
