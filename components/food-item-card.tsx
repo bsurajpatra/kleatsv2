@@ -27,53 +27,56 @@ interface FoodItemCardProps {
 }
 
 export default function FoodItemCard({ item, onAddToCart, quantity = 0, onIncrement, onDecrement, isLoading = false }: FoodItemCardProps) {
+  const handleAction = () => {
+    if (onAddToCart) {
+      onAddToCart(item)
+    } else if (onIncrement) {
+      onIncrement()
+    }
+  }
+
   return (
-    <Card className="overflow-hidden">
-      <CardContent className="flex p-0">
-        <div className="flex-1 p-4">
-          <div className="flex justify-between items-start">
-            <div>
-              <h3 className="font-semibold">{item.name}</h3>
-              <p className="mb-1 text-xs text-muted-foreground">{item.canteen}</p>
-            </div>
-            {item.rating && (
-              <Badge variant="outline" className="bg-primary/10 text-primary">
-                ★ {item.rating}
-              </Badge>
-            )}
-          </div>
-          <p className="mb-2 text-sm text-muted-foreground line-clamp-2">{item.description}</p>
-          {item.preparationTime && (
-            <p className="text-xs text-muted-foreground mb-2">Prep time: {item.preparationTime}</p>
-          )}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="font-medium">₹{item.price}</span>
-              {item.canteen && (
-                <Badge variant="secondary" className="text-[10px]">
-                  {item.canteen}
+    <Card className="overflow-hidden h-full flex flex-col">
+      <CardContent className="flex p-0 flex-grow">
+        <div className="flex-1 p-4 flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start">
+              <h3 className="font-semibold leading-tight">{item.name}</h3>
+              {item.rating && (
+                <Badge variant="outline" className="bg-primary/10 text-primary text-xs flex-shrink-0 ml-2">
+                  ★ {item.rating}
                 </Badge>
               )}
             </div>
-            {quantity > 0 ? (
-              <div className="flex items-center gap-2">
-                <Button size="icon" variant="outline" disabled={isLoading} onClick={onDecrement} className="h-8 w-8">
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Minus className="h-4 w-4" />}
-                </Button>
-                <span className="w-6 text-center text-sm font-medium">{quantity}</span>
-                <Button size="icon" variant="default" disabled={isLoading} onClick={onIncrement} className="h-8 w-8">
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                </Button>
-              </div>
-            ) : (
-              <Button size="sm" disabled={isLoading} onClick={() => (onAddToCart ? onAddToCart(item) : onIncrement?.())}>
-                {isLoading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
-                {isLoading ? "Adding" : "Add"}
-              </Button>
+            <p className="mb-1 text-xs text-muted-foreground">{item.canteen}</p>
+            <p className="mb-2 text-sm text-muted-foreground line-clamp-2 flex-grow">{item.description}</p>
+          </div>
+          <div className="mt-2">
+            {item.preparationTime && (
+              <p className="text-xs text-muted-foreground mb-2">Prep time: {item.preparationTime}</p>
             )}
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-lg">₹{item.price}</span>
+              {quantity > 0 ? (
+                <div className="flex items-center gap-2">
+                  <Button size="icon" variant="outline" disabled={isLoading} onClick={onDecrement} className="h-8 w-8 rounded-full">
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Minus className="h-4 w-4" />}
+                  </Button>
+                  <span className="w-6 text-center text-sm font-medium">{quantity}</span>
+                  <Button size="icon" variant="default" disabled={isLoading} onClick={onIncrement} className="h-8 w-8 rounded-full">
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  </Button>
+                </div>
+              ) : (
+                <Button size="sm" disabled={isLoading} onClick={handleAction} className="rounded-full">
+                  {isLoading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Plus className="mr-1 h-4 w-4" />}
+                  {isLoading ? "Adding" : "Add"}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-        <div className="relative h-auto w-24">
+        <div className="relative h-auto w-28 flex-shrink-0">
           <FavoriteButton item={item} />
           <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
         </div>

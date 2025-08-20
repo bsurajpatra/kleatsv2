@@ -24,7 +24,13 @@ import LockOverlay from "@/components/lock-overlay"
 // import ContactUs from "./contact/page"
 
 export default function Home() {
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      const hasLoadedBefore = sessionStorage.getItem("hasLoadedBefore")
+      return !hasLoadedBefore
+    }
+    return true
+  })
   const [locked, setLocked] = useState<boolean>(() => {
     const v = process.env.NEXT_PUBLIC_LOCK
     return typeof v === "string" && /LOCK/i.test(v)
@@ -90,13 +96,15 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    // Simulate loading time for initial app load
-    const timer = setTimeout(() => {
-      setIsLoading(false)
-    }, 2000)
+    if (isLoading) {
+      sessionStorage.setItem("hasLoadedBefore", "true")
+      const timer = setTimeout(() => {
+        setIsLoading(false)
+      }, 1500) // Reduced loading time
 
-    return () => clearTimeout(timer)
-  }, [])
+      return () => clearTimeout(timer)
+    }
+  }, [isLoading])
 
   // Load mock popular items from service (uses mock since API probing is disabled)
   useEffect(() => {
@@ -236,73 +244,87 @@ export default function Home() {
       </div>
 
       {/* Static, clean hero without parallax/animations */}
-      <section className="relative overflow-hidden">
-        <div className="hero-bg" />
-        <div className="container px-4 pt-10 pb-6 md:pt-16 md:pb-12">
+      <section className="relative overflow-hidden bg-gradient-to-b from-background via-background to-transparent">
+        <div className="hero-bg-animation" />
+        <div className="container px-4 pt-10 pb-6 md:pt-16 md:pb-12 relative z-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 items-center">
-            <div>
-              <h1 className="text-2xl md:text-4xl lg:text-5xl font-bold tracking-tight">
+            <motion.div
+              initial={{ opacity: 0, x: -50 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.7, ease: "easeOut" }}
+            >
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight">
                 Quick, tasty meals from your campus canteens
               </h1>
               <p className="mt-3 md:mt-4 text-muted-foreground text-sm md:text-base max-w-xl">
                 Discover popular items, browse categories, and order in seconds. Fresh, fast, and right around the corner.
               </p>
-              <div className="mt-4 flex items-center gap-3">
-                <Link href="/canteens" className="inline-flex rounded-md bg-primary px-4 py-2 text-white text-sm font-medium">
-                  Browse canteens
+              <motion.div
+                className="mt-6 flex items-center gap-3"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.7, ease: "easeOut", delay: 0.3 }}
+              >
+                <Link href="/canteens" passHref>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="inline-flex rounded-md bg-primary px-5 py-2.5 text-white text-sm font-medium shadow-lg shadow-primary/20"
+                  >
+                    Browse Canteens
+                  </motion.button>
                 </Link>
-                <Link href="#popular" className="inline-flex rounded-md px-4 py-2 text-sm font-medium border">
-                  Explore popular
+                <Link href="#popular" passHref>
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="inline-flex rounded-md px-5 py-2.5 text-sm font-medium border bg-card hover:bg-muted"
+                  >
+                    Explore Popular
+                  </motion.button>
                 </Link>
-              </div>
-            </div>
+              </motion.div>
+            </motion.div>
             <div className="md:pl-6">
-              <div className="grid grid-cols-2 gap-3 md:gap-4">
-                <div className="rounded-xl border p-4 bg-card/60">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                      <Star className="h-5 w-5" />
+              <motion.div
+                className="grid grid-cols-2 gap-3 md:gap-4"
+                initial="hidden"
+                animate="visible"
+                variants={{
+                  visible: {
+                    transition: {
+                      staggerChildren: 0.1,
+                      delayChildren: 0.5,
+                    },
+                  },
+                }}
+              >
+                {[
+                  { icon: Star, title: "Best Rated", subtitle: "Students’ favorites" },
+                  { icon: Clock, title: "Under 15 min", subtitle: "Fast pickup" },
+                  { icon: Utensils, title: "Fresh Options", subtitle: "Across canteens" },
+                  { icon: Star, title: "Exclusive Offers", subtitle: "Daily deals" },
+                ].map((item, index) => (
+                  <motion.div
+                    key={index}
+                    variants={{
+                      hidden: { opacity: 0, y: 20 },
+                      visible: { opacity: 1, y: 0 },
+                    }}
+                    className="rounded-xl border p-4 bg-card/60 backdrop-blur-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                        <item.icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">{item.subtitle}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-semibold">Best rated</p>
-                      <p className="text-xs text-muted-foreground">Students’ favorites</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="rounded-xl border p-4 bg-card/60">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                      <Clock className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">Under 15 min</p>
-                      <p className="text-xs text-muted-foreground">Fast pickup</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="rounded-xl border p-4 bg-card/60">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                      <Utensils className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">Fresh options</p>
-                      <p className="text-xs text-muted-foreground">Across canteens</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="rounded-xl border p-4 bg-card/60">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                      <Star className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold">Offers</p>
-                      <p className="text-xs text-muted-foreground">Exclusive deals</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  </motion.div>
+                ))}
+              </motion.div>
             </div>
           </div>
         </div>
@@ -352,202 +374,209 @@ export default function Home() {
 
         {/* Show regular content only when not searching */}
         {searchQuery.trim().length === 0 && (
-          <>
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.5 }}
-              >
-                <section className="mb-8">
-                <h2 className="mb-4 text-lg font-semibold">Food Categories</h2>
-                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                  {apiCategories.map((category) => (
-                    <Link href={`/category/${encodeURIComponent(category.name)}`} key={category.name}>
-                        <Card className="card-hover overflow-hidden bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40">
-                          <CardContent className="flex flex-col items-center p-4">
-                          <div className="mb-3 rounded-full bg-secondary/10 p-2">
+          <motion.div
+            initial="hidden"
+            whileInView="visible"
+            viewport={{ once: true, amount: 0.2 }}
+            transition={{ staggerChildren: 0.1 }}
+          >
+            <motion.section
+              className="mb-8"
+              variants={{
+                hidden: { opacity: 0, y: 40 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+              }}
+            >
+              <h2 className="mb-4 text-xl font-bold tracking-tight">Food Categories</h2>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                {apiCategories.map((category) => (
+                  <Link href={`/category/${encodeURIComponent(category.name)}`} key={category.name} passHref>
+                    <motion.div whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }} transition={{ type: "spring", stiffness: 300 }}>
+                      <Card className="overflow-hidden bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 h-full">
+                        <CardContent className="flex flex-col items-center justify-center p-4 text-center">
+                          <div className="mb-3 rounded-full bg-secondary/10 p-2 transform group-hover:scale-110 transition-transform duration-300">
                             <Image
-                              src={(category.poster ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")}${category.poster.startsWith("/") ? category.poster : `/${category.poster}`}` : "/placeholder.svg")}
+                              src={category.poster ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")}${category.poster.startsWith("/") ? category.poster : `/${category.poster}`}` : "/placeholder.svg"}
                               alt={category.name}
                               width={60}
                               height={60}
                               className="h-15 w-15 rounded-full object-cover"
                             />
                           </div>
-                          <h3 className="text-center text-sm font-medium">{category.name}</h3>
+                          <h3 className="text-sm font-semibold">{category.name}</h3>
                         </CardContent>
                       </Card>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            </motion.div>
+                    </motion.div>
+                  </Link>
+                ))}
+              </div>
+            </motion.section>
 
-            {/* Today's Offers - lightweight section */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.5, delay: 0.03 }}
+            <motion.section
+              className="mb-6"
+              aria-labelledby="offers-heading"
+              variants={{
+                hidden: { opacity: 0, y: 40 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+              }}
             >
-              <section className="mb-6" aria-labelledby="offers-heading">
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 id="offers-heading" className="text-base font-semibold">Today's Offers</h2>
-                </div>
-                <div className="grid gap-3 grid-cols-2 md:grid-cols-2">
-                  {[
-                    {
-                      id: 0,
-                      title: "Combo Meal Discount",
-                      subtitle: "Limited time • Campus pickup",
-                      image: "/hero/bowl.svg",
-                      coupon: "KLE10",
-                    },
-                    {
-                      id: 1,
-                      title: "Fresh & Healthy Deal",
-                      subtitle: "Limited time • Campus pickup",
-                      image: "/hero/leaf.svg",
-                      coupon: "FRESH15",
-                    },
-                  ].map((offer, idx) => {
-                    const canteenName = idx === 0 ? "Main Canteen" : "North Canteen"
-                    return (
-                      <Card key={`offer-${offer.id}`} className="overflow-hidden">
-                        <CardContent className="p-0">
-                          <div className="relative h-24">
-                            <Image src={offer.image} alt={offer.title} fill className="object-contain p-3 bg-accent/10" />
-                            <Badge className="absolute left-2 top-2 text-[10px] px-1.5 py-0.5">{canteenName}</Badge>
+              <div className="mb-3 flex items-center justify-between">
+                <h2 id="offers-heading" className="text-xl font-bold tracking-tight">Today's Offers</h2>
+              </div>
+              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                {[
+                  {
+                    id: 0,
+                    title: "Combo Meal Discount",
+                    subtitle: "Limited time • Campus pickup",
+                    image: "/hero/bowl.svg",
+                    coupon: "KLE10",
+                  },
+                  {
+                    id: 1,
+                    title: "Fresh & Healthy Deal",
+                    subtitle: "Limited time • Campus pickup",
+                    image: "/hero/leaf.svg",
+                    coupon: "FRESH15",
+                  },
+                ].map((offer, idx) => (
+                  <motion.div key={`offer-${offer.id}`} whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.05)" }} transition={{ type: "spring", stiffness: 300 }}>
+                    <Card className="overflow-hidden h-full flex flex-col">
+                      <CardContent className="p-0 flex-grow">
+                        <div className="relative h-28">
+                          <Image src={offer.image} alt={offer.title} fill className="object-contain p-4 bg-gradient-to-br from-accent/20 to-transparent" />
+                          <Badge className="absolute left-2 top-2 text-[10px] px-1.5 py-0.5 border-primary/50 bg-primary/10 text-primary">{idx === 0 ? "Main Canteen" : "North Canteen"}</Badge>
+                        </div>
+                        <div className="p-3 space-y-2 flex-grow flex flex-col justify-between">
+                          <div>
+                            <p className="font-semibold leading-tight">{offer.title}</p>
+                            <p className="text-xs text-muted-foreground leading-tight mt-1">{offer.subtitle}</p>
                           </div>
-                          <div className="p-3 space-y-2">
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <p className="text-xs font-semibold leading-tight">{offer.title}</p>
-                                <p className="text-[11px] text-muted-foreground leading-tight">{offer.subtitle}</p>
-                              </div>
-                              <Link href={`/offers/${offer.id}`} className="text-xs font-medium text-primary hover:underline whitespace-nowrap">View</Link>
+                          <div className="flex items-center justify-between gap-2 pt-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs uppercase tracking-wide text-muted-foreground">Code:</span>
+                              <code className="rounded bg-muted px-2 py-1 text-xs font-mono font-bold">{offer.coupon}</code>
                             </div>
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] uppercase tracking-wide text-muted-foreground">Code</span>
-                                <code className="rounded bg-muted px-1.5 py-0.5 text-[11px] font-mono">{offer.coupon}</code>
-                              </div>
-                              <button
-                                onClick={() => copyCoupon(offer.coupon, offer.id)}
-                                className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[11px] hover:bg-secondary"
-                                aria-label={`Copy coupon ${offer.coupon}`}
-                              >
-                                {copiedOffer === offer.id ? (
-                                  <>
-                                    <Check className="h-3 w-3" /> Copied
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy className="h-3 w-3" /> Copy
-                                  </>
-                                )}
-                              </button>
-                            </div>
+                            <button
+                              onClick={() => copyCoupon(offer.coupon, offer.id)}
+                              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs hover:bg-secondary transition-colors"
+                              aria-label={`Copy coupon ${offer.coupon}`}
+                            >
+                              {copiedOffer === offer.id ? (
+                                <>
+                                  <Check className="h-3.5 w-3.5 text-green-500" /> Copied
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="h-3.5 w-3.5" /> Copy
+                                </>
+                              )}
+                            </button>
                           </div>
-                        </CardContent>
-                      </Card>
-                    )
-                  })}
-                </div>
-              </section>
-            </motion.div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.section>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.5, delay: 0.05 }}
-              >
-                <section className="mb-8 scroll-mt-16 md:scroll-mt-20" id="popular">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">Popular Items</h2>
-                    <span className="hidden md:inline-flex text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">Updated hourly</span>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {popularItems.slice(0, 3).map((item) => {
-                      const normalized = { ...item, canteen: (item as any).canteen ?? item.canteenName }
-                      return (
-                        <FoodItemCard
-                          key={item.id}
-                          item={normalized as any}
-                          onAddToCart={(it: any) => {
-                            const cid = (it as any).canteenId
-                            const isNumeric = typeof cid === "number" || (typeof cid === "string" && /^\d+$/.test(cid))
-                            router.push(isNumeric ? `/canteen/${cid}` : "/canteens")
-                          }}
-                        />
-                      )
-                    })}
-                  </div>
-              </section>
-            </motion.div>
+            <motion.section
+              className="mb-8 scroll-mt-16 md:scroll-mt-20"
+              id="popular"
+              variants={{
+                hidden: { opacity: 0, y: 40 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+              }}
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold tracking-tight">Popular Items</h2>
+                <span className="hidden md:inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                  <Star className="w-3 h-3" />
+                  <span>Updated Hourly</span>
+                </span>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {popularItems.slice(0, 3).map((item) => {
+                  const normalized = { ...item, canteen: (item as any).canteen ?? item.canteenName }
+                  return (
+                    <motion.div key={item.id} whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }} transition={{ type: "spring", stiffness: 300 }}>
+                      <FoodItemCard
+                        item={normalized as any}
+                        onAddToCart={(it: any) => {
+                          const cid = (it as any).canteenId
+                          const isNumeric = typeof cid === "number" || (typeof cid === "string" && /^\d+$/.test(cid))
+                          router.push(isNumeric ? `/canteen/${cid}` : "/canteens")
+                        }}
+                      />
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </motion.section>
 
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.5, delay: 0.1 }}
-              >
-                <section className="mb-8" id="canteens">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">Canteens</h2>
-                    <Link
-                      href="/canteens"
-                      className="text-sm font-medium text-primary hover:underline"
-                      aria-label="View all canteens"
-                    >
-                      View all
-                    </Link>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                    {apiCanteens
-                      .filter((c) => {
-                        const open = isOpenNow(c.fromTime, c.ToTime)
-                        return open === true || open === null
-                      })
-                      .slice(0, 6)
-                      .map((canteen) => (
-                    <Link href={`/canteen/${canteen.canteenId}`} key={canteen.canteenId}>
-                        <Card className="card-hover overflow-hidden">
-                        <CardContent className="p-0">
-                          <div className="relative h-40">
-                            <Image
-                              src={
-                                canteen.poster
-                                  ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")}${canteen.poster.startsWith("/") ? canteen.poster : `/${canteen.poster}`}`
-                                  : "/placeholder.svg"
-                              }
-                              alt={canteen.CanteenName}
-                              fill
-                              className="object-cover"
-                            />
-                            <Badge className="absolute right-2 top-2 bg-primary">Open</Badge>
-                          </div>
-                          <div className="p-4">
-                            <h3 className="text-lg font-semibold">{canteen.CanteenName}</h3>
-                            {canteen.Location && (
-                              <p className="text-sm text-muted-foreground">{canteen.Location}</p>
-                            )}
-                            <div className="mt-2 flex justify-between">
-                              <p className="text-xs text-muted-foreground">
-                                {(canteen.fromTime || canteen.ToTime) ? `${canteen.fromTime || "?"} - ${canteen.ToTime || "?"}` : "Timing info not available"}
-                              </p>
+            <motion.section
+              className="mb-8"
+              id="canteens"
+              variants={{
+                hidden: { opacity: 0, y: 40 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
+              }}
+            >
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-bold tracking-tight">Our Canteens</h2>
+                <Link
+                  href="/canteens"
+                  className="text-sm font-medium text-primary hover:underline"
+                  aria-label="View all canteens"
+                >
+                  View all
+                </Link>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {apiCanteens
+                  .filter((c) => {
+                    const open = isOpenNow(c.fromTime, c.ToTime)
+                    return open === true || open === null
+                  })
+                  .slice(0, 6)
+                  .map((canteen) => (
+                    <Link href={`/canteen/${canteen.canteenId}`} key={canteen.canteenId} passHref>
+                      <motion.div whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }} transition={{ type: "spring", stiffness: 300 }} className="h-full">
+                        <Card className="overflow-hidden h-full">
+                          <CardContent className="p-0">
+                            <div className="relative h-40">
+                              <Image
+                                src={
+                                  canteen.poster
+                                    ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")}${canteen.poster.startsWith("/") ? canteen.poster : `/${canteen.poster}`}`
+                                    : "/placeholder.svg"
+                                }
+                                alt={canteen.CanteenName}
+                                fill
+                                className="object-cover"
+                              />
+                              <Badge className="absolute right-2 top-2 bg-green-500 text-white shadow-md">Open</Badge>
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                            <div className="p-4">
+                              <h3 className="text-lg font-semibold">{canteen.CanteenName}</h3>
+                              {canteen.Location && (
+                                <p className="text-sm text-muted-foreground">{canteen.Location}</p>
+                              )}
+                              <div className="mt-2 flex justify-between">
+                                <p className="text-xs text-muted-foreground">
+                                  {(canteen.fromTime || canteen.ToTime) ? `${canteen.fromTime || "?"} - ${canteen.ToTime || "?"}` : "Timing info not available"}
+                                </p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
                     </Link>
                   ))}
-                </div>
-              </section>
-            </motion.div>
-          </>
+              </div>
+            </motion.section>
+          </motion.div>
         )}
       </div>
 

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import BottomNavigation from "@/components/bottom-navigation"
 import { format } from "date-fns"
+import PageHeader from "@/components/page-header"
 
 type AnyOrder = Record<string, any>
 
@@ -69,12 +70,7 @@ export default function OrdersPage() {
 
   return (
     <div className="min-h-screen pb-16 page-transition">
-      <div className="sticky top-0 z-10 flex items-center bg-background p-4 shadow-sm">
-        <Link href="/" className="mr-2 text-sm underline">
-          Home
-        </Link>
-        <h1 className="text-xl font-bold">Orders</h1>
-      </div>
+      <PageHeader title="My Orders" />
 
       <div className="container px-4 py-6">
         {loading ? (

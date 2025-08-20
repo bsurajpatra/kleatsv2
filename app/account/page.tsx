@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useSubscription } from "@/hooks/use-subscription"
+import PageHeader from "@/components/page-header"
 
 export default function AccountPage() {
   const { theme, setTheme } = useTheme()
@@ -165,18 +166,7 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen pb-16 page-transition">
-      <div className="sticky top-0 z-10 flex items-center justify-between bg-background p-4 shadow-sm">
-        <div className="flex items-center">
-          <Link href="/" className="mr-2">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-          <h1 className="text-xl font-bold">My Account</h1>
-        </div>
-        <Button variant="ghost" size="sm" onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Logout
-        </Button>
-      </div>
+      <PageHeader title="My Account" />
 
       <div className="container px-4 py-6">
         <Card className="mb-6">
@@ -187,7 +177,7 @@ export default function AccountPage() {
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold">{backendProfile?.name || user.name}</h2>
-                <Button variant="ghost" size="sm" onClick={() => setIsEditProfileOpen(true)}>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditProfileOpen(true)}>
                   <Edit className="h-4 w-4" />
                 </Button>
               </div>
@@ -211,9 +201,18 @@ export default function AccountPage() {
 
         <Tabs defaultValue="profile" className="mb-6">
           <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="subscription">Subscription</TabsTrigger>
-            <TabsTrigger value="history">History</TabsTrigger>
+            <TabsTrigger value="profile">
+              <User className="mr-2 h-4 w-4" />
+              Profile
+            </TabsTrigger>
+            <TabsTrigger value="subscription">
+              <Star className="mr-2 h-4 w-4" />
+              Subscription
+            </TabsTrigger>
+            <TabsTrigger value="history">
+              <History className="mr-2 h-4 w-4" />
+              History
+            </TabsTrigger>
           </TabsList>
           <TabsContent value="profile">
             <Card>
@@ -244,21 +243,12 @@ export default function AccountPage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <Star className="h-4 w-4 text-muted-foreground" />
-                    <Label>Favorite Items</Label>
+                    <LogOut className="h-4 w-4 text-muted-foreground" />
+                    <Label>Logout</Label>
                   </div>
-                  <Link href="/favorites">
-                    <Button variant="ghost" size="sm">
-                      View
-                    </Button>
-                  </Link>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Package className="h-4 w-4 text-muted-foreground" />
-                    <Label>Default Packaging</Label>
-                  </div>
-                  <Switch id="default-packaging" />
+                  <Button variant="ghost" size="sm" onClick={handleLogout}>
+                    Logout
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -334,12 +324,6 @@ export default function AccountPage() {
                 <CardDescription>View your past orders and transactions</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <History className="h-4 w-4 text-muted-foreground" />
-                    <Label>Recent Orders</Label>
-                  </div>
-                </div>
                 {sortedOrders.length > 0 ? (
                   <div className="space-y-4">
                     {sortedOrders.map((order) => (
@@ -384,8 +368,8 @@ export default function AccountPage() {
                     ))}
                   </div>
                 ) : (
-                  <div className="rounded-md border p-4">
-                    <p className="text-sm text-muted-foreground">No order history yet</p>
+                  <div className="rounded-md border p-4 text-center">
+                    <p className="text-sm text-muted-foreground">No order history yet.</p>
                   </div>
                 )}
               </CardContent>

@@ -209,6 +209,41 @@
     radial-gradient(800px circle at 90% 30%, hsl(var(--secondary) / 0.10), transparent 40%);
 }
 
+.hero-bg-animation {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.hero-bg-animation::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, hsl(var(--primary) / 0.05), transparent 60%);
+  animation: rotate 20s linear infinite;
+  transform-origin: center center;
+}
+
+.dark .hero-bg-animation::before {
+  background: radial-gradient(circle, hsl(var(--primary) / 0.1), transparent 60%);
+}
+
+@keyframes rotate {
+  from {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
 .glass {
   background: hsl(var(--card) / 0.6);
   -webkit-backdrop-filter: blur(8px);

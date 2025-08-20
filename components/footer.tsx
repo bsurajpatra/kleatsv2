@@ -6,101 +6,49 @@ import Link from 'next/link';
 
 export default function Footer() {
   return (
-    <footer className="border-t bg-background">
-      <div className="container px-4 py-8">
-        <div className="grid gap-8 md:grid-cols-4">
-          <div className="flex flex-col">
-            <Logo className="mb-4" />
-            <p className="text-sm text-muted-foreground">
-              Pre-order your favorite campus food and skip the lines. KL-Eats makes campus dining easy and convenient.
+    <footer className="border-t bg-background/95 backdrop-blur-sm">
+      <div className="container px-4 py-6">
+        <div className="grid gap-6 md:grid-cols-3">
+          <div className="md:col-span-1">
+            <Logo className="mb-2" />
+            <p className="text-xs text-muted-foreground">
+              Pre-order your favorite campus food and skip the lines.
             </p>
           </div>
 
-          <div>
-            <h3 className="mb-3 text-sm font-medium">Quick Links</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/" className="text-muted-foreground hover:text-primary">
-                  Home
-                </Link>
-              </li>
-              <li>
-                <Link href="/canteens" className="text-muted-foreground hover:text-primary">
-                  Canteens
-                </Link>
-              </li>
-              <li>
-                <Link href="/quick-order" className="text-muted-foreground hover:text-primary">
-                  My Orders
-                </Link>
-              </li>
-              <li>
-                <Link href="/account" className="text-muted-foreground hover:text-primary">
-                  Account
-                </Link>
-              </li>
-               <li>
-                 <Link href="/contact" className="text-muted-foreground hover:text-primary">
-                   Contact Us
-                 </Link>
-               </li>
-               <li>
-                 <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary">
-                   Privacy Policy
-                 </Link>
-               </li>
-            </ul>
-          </div>
-
-          
-          <div>
-            <h3 className="mb-3 text-sm font-medium">Follow Us</h3>
-            <div className="flex space-x-4">
-              <a href="#" className="text-muted-foreground hover:text-primary">
-                <Facebook className="h-5 w-5" />
-                <span className="sr-only">Facebook</span>
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-primary">
-                <Instagram className="h-5 w-5" />
-                <span className="sr-only">Instagram</span>
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-primary">
-                <Twitter className="h-5 w-5" />
-                <span className="sr-only">Twitter</span>
-              </a>
+          <div className="grid grid-cols-2 gap-6 text-sm">
+            <div>
+              <h3 className="mb-2 font-medium">Quick Links</h3>
+              <ul className="space-y-1.5">
+                <li><Link href="/" className="text-muted-foreground hover:text-primary">Home</Link></li>
+                <li><Link href="/canteens" className="text-muted-foreground hover:text-primary">Canteens</Link></li>
+                <li><Link href="/orders" className="text-muted-foreground hover:text-primary">My Orders</Link></li>
+                <li><Link href="/account" className="text-muted-foreground hover:text-primary">Account</Link></li>
+              </ul>
+            </div>
+            <div>
+              <h3 className="mb-2 font-medium">Learn More</h3>
+              <ul className="space-y-1.5">
+                <li><Link href="/terms" className="text-muted-foreground hover:text-primary">Terms</Link></li>
+                <li><Link href="/refund-policy" className="text-muted-foreground hover:text-primary">Refunds</Link></li>
+                <li><Link href="/privacy-policy" className="text-muted-foreground hover:text-primary">Privacy</Link></li>
+                <li><Link href="/contact" className="text-muted-foreground hover:text-primary">Contact</Link></li>
+              </ul>
             </div>
           </div>
-
-          {/* Learn More section with ordered policy links */}
-          <div>
-            <h3 className="mb-3 text-sm font-medium">Learn More</h3>
-            <ul className="space-y-2 text-sm">
-              <li>
-                <Link href="/terms" className="text-muted-foreground hover:text-primary">
-                  Terms & Conditions
-                </Link>
-              </li>
-              <li>
-                <Link href="/refund-policy" className="text-muted-foreground hover:text-primary">
-                  Refund Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link href="/contact" className="text-muted-foreground hover:text-primary">
-                   Contact Us
-                 </Link>
-              </li>
-            </ul>
+          
+          <div className="md:text-right">
+            <h3 className="mb-2 text-sm font-medium">Follow Us</h3>
+            <div className="flex space-x-3 md:justify-end">
+              <a href="#" className="text-muted-foreground hover:text-primary"><Facebook className="h-5 w-5" /><span className="sr-only">Facebook</span></a>
+              <a href="#" className="text-muted-foreground hover:text-primary"><Instagram className="h-5 w-5" /><span className="sr-only">Instagram</span></a>
+              <a href="#" className="text-muted-foreground hover:text-primary"><Twitter className="h-5 w-5" /><span className="sr-only">Twitter</span></a>
+            </div>
           </div>
         </div>
 
-        <div className="mt-8 border-t pt-6 text-center text-xs text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} KL Eats : A Unit of Equitech Private Limited. All rights reserved.</p>
+        <div className="mt-6 border-t pt-4 text-center text-xs text-muted-foreground">
+          <p>&copy; {new Date().getFullYear()} KL Eats. All rights reserved.</p>
         </div>
       </div>
     </footer>

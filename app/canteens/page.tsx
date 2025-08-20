@@ -12,6 +12,7 @@ import Link from "next/link"
 import { motion } from "framer-motion"
 
 // Import SearchBar
+import PageHeader from "@/components/page-header"
 import SearchBar from "@/components/search-bar"
 import { isOpenNow } from "@/lib/utils"
 
@@ -83,9 +84,7 @@ export default function CanteensPage() {
 
   return (
     <main className="min-h-screen pb-24 page-transition">
-      <div className="sticky top-0 z-10 bg-background p-4 shadow-sm">
-        <h1 className="text-xl font-bold">Canteens</h1>
-      </div>
+      <PageHeader title="Canteens" />
 
       <div className="container px-4 py-6">
         <div className="mb-6">
