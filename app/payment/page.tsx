@@ -39,7 +39,7 @@ export default function PaymentPage() {
   const CASHFREE_ENABLED = (process.env.NEXT_PUBLIC_CASHFREE || "").toString().toUpperCase() === "TRUE"
   const CASHFREE_MODE = (process.env.NEXT_PUBLIC_CASHFREE_MODE || "production").toString().toLowerCase() === "sandbox" ? "sandbox" : "production"
 
-  // Lazy-load Cashfree SDK and trigger checkout when session id is provided
+  // Lazy-load Cashfree SDK (v3) and trigger checkout when session id is provided
   const loadCashfreeAndCheckout = async (paymentSessionId: string) => {
     if (!paymentSessionId) return
     const ensureScript = () =>
@@ -49,16 +49,16 @@ export default function PaymentPage() {
           return
         }
         const s = document.createElement("script")
-        s.src = "https://sdk.cashfree.com/js/ui/2.0.0/cashfree.js"
+        s.src = "https://sdk.cashfree.com/js/v3/cashfree.js"
         s.async = true
         s.onload = () => resolve()
         s.onerror = () => reject(new Error("Failed to load Cashfree SDK"))
         document.head.appendChild(s)
       })
     await ensureScript()
-    const CF = (window as any).Cashfree
+    const CashfreeFn = (window as any).Cashfree
     try {
-      const cashfree = new CF({ mode: CASHFREE_MODE })
+      const cashfree = CashfreeFn({ mode: CASHFREE_MODE })
       await cashfree.checkout({ paymentSessionId, redirectTarget: "_self" })
     } catch (err) {
       // As a fallback, let caller handle alternate redirects or show error
