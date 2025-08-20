@@ -41,7 +41,7 @@ export default function Footer() {
               </li>
                <li>
                  <Link href="/contact" className="text-muted-foreground hover:text-primary">
-                 ContactUs
+                   Contact Us
                  </Link>
                </li>
                <li>
@@ -89,6 +89,11 @@ export default function Footer() {
                 <Link href="/privacy-policy" className="text-muted-foreground hover:text-primary">
                   Privacy Policy
                 </Link>
+              </li>
+              <li>
+                <Link href="/contact" className="text-muted-foreground hover:text-primary">
+                   Contact Us
+                 </Link>
               </li>
             </ul>
           </div>

@@ -1,70 +1,117 @@
-"use client";
-import React from "react";
+import { Mail, MapPin, Headphones, Users } from "lucide-react"
+import Footer from "@/components/footer"
+import { Card, CardContent } from "@/components/ui/card"
+
+export const metadata = {
+  title: "Contact Us – KL-Eats",
+  description: "Get support, share feedback, or learn how to contribute to KL-Eats.",
+}
 
 export default function ContactUs() {
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans overflow-x-hidden">
-      {/* Sticky Header */}
-      <header className="sticky top-0 bg-white shadow-md z-10 p-4 border-b border-gray-200">
-        <h1 className="text-3xl font-bold text-red-600">KL Eats - Contact Us</h1>
-        <p className="text-sm text-gray-600">Support & Feedback Center</p>
-      </header>
+    <main className="min-h-screen page-transition">
+      {/* Sticky Header aligned with app */}
+      <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
+        <div className="container px-4 py-6 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+            <Mail className="h-5 w-5" />
+          </div>
+          <div>
+            <h1 className="text-xl font-semibold leading-tight">Contact Us</h1>
+            <p className="text-xs text-muted-foreground">Support & Feedback Center</p>
+          </div>
+        </div>
+      </div>
 
-      {/* Hero Section */}
-      <section className="bg-red-50 py-10 px-6 text-center">
-        <h2 className="text-4xl font-extrabold text-red-700 mb-4">
-          Need Help? We’re Here 24/7!
-        </h2>
-        <p className="text-lg text-gray-700 max-w-xl mx-auto">
-          Reach out for queries, platform issues, or to become a contributor at KL Eats — your all-in-one campus food solution!
-        </p>
+      {/* Hero-like intro */}
+      <section className="relative overflow-hidden">
+        <div className="hero-bg" />
+        <div className="container px-4 py-8 md:py-12">
+          <div className="mx-auto max-w-3xl text-center">
+            <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Need help? We’re here 24/7</h2>
+            <p className="mt-2 text-sm md:text-base text-muted-foreground">
+              Reach out for queries, platform issues, or to become a contributor at KL-Eats — your campus food companion.
+            </p>
+          </div>
+        </div>
       </section>
 
-      {/* Support Features Section */}
-      <section className="py-10 px-6 bg-white">
-        <h3 className="text-2xl font-semibold mb-6 text-gray-800">Why Contact Us?</h3>
-        <ul className="space-y-4 text-lg">
-          <li> Fast response to all user queries</li>
-          <li>Direct support from KL GLUG members at Room C424</li>
-          <li>24/7 technical support for platform issues</li>
-          <li> Want to contribute? We’ll guide you</li>
-          <li>Suggestions? Help us improve the experience</li>
-          <li>Live updates on menus and service</li>
-          <li>Issues with food, service, payments? We’ve got you!</li>
-        </ul>
+      {/* Content */}
+      <section className="container px-4 pb-10">
+        <div className="mx-auto max-w-3xl space-y-6">
+          {/* Why contact us */}
+          <Card className="bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <Headphones className="h-5 w-5 text-primary" />
+                <h3 className="text-base font-semibold">Why contact us?</h3>
+              </div>
+              <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
+                <li>Fast response to all user queries</li>
+                <li>Direct support from KL GLUG members at Room C424</li>
+                <li>24/7 technical support for platform issues</li>
+                <li>Want to contribute? We’ll guide you</li>
+                <li>Suggestions welcome to improve your experience</li>
+                <li>Live updates on menus and service</li>
+                <li>Issues with food, service, or payments — we’ve got you</li>
+              </ul>
+            </CardContent>
+          </Card>
+
+          {/* Join us */}
+          <Card className="bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="h-5 w-5 text-primary" />
+                <h3 className="text-base font-semibold">Join us or contribute</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                To become a member or contribute to KL-Eats, visit
+                {" "}
+                <a
+                  href="https://kleats.in/member"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline underline-offset-4"
+                >
+                  kleats.in/member
+                </a>
+                {" "}or visit Room C424.
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Contact info */}
+          <Card className="bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Mail className="h-5 w-5 text-primary" />
+                <h3 className="text-base font-semibold">Still have questions?</h3>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                Drop your queries anytime, and we’ll ensure you get the best support possible. Your experience matters to us.
+              </p>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs uppercase text-muted-foreground mb-1">Email</p>
+                  <a href="mailto:support@kleats.in" className="text-sm text-foreground hover:text-primary">
+                    support@kleats.in
+                  </a>
+                </div>
+                <div className="rounded-lg border p-4">
+                  <p className="text-xs uppercase text-muted-foreground mb-1">Location</p>
+                  <p className="text-sm text-foreground flex items-start gap-2">
+                    <MapPin className="h-4 w-4 mt-0.5 text-primary" />
+                    KL University, GLUG Room C424, Vijayawada
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </section>
 
-      {/* Membership & Contribution */}
-      <section className="py-10 px-6 bg-gray-50">
-        <h3 className="text-2xl font-semibold mb-4">Join Us or Contribute</h3>
-        <p className="mb-4">
-          To become a member or contribute to KL Eats, visit:
-          <a
-            href="https://kleats.in/member"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-red-600 underline ml-1"
-          >
-            kleats.in/member
-          </a>
-          {" "}or visit Room C424.
-        </p>
-      </section>
-
-      {/* Contact Box */}
-      <section className="bg-red-100 p-6 mt-6 rounded-lg shadow mx-4">
-        <h3 className="text-xl font-semibold mb-2 text-red-700">Still Have Questions?</h3>
-        <p>Drop your queries anytime, and we’ll ensure you get the best support possible. Your experience matters to us!</p>
-        <p className="mt-4">
-          📩 Email: <a href="mailto:support@kleats.in" className="text-blue-700 underline">support@kleats.in</a><br />
-          📍 Location: KL University, GLUG Room C424, Vijayawada
-        </p>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-800 text-white text-center py-4 mt-10">
-        &copy; {new Date().getFullYear()} KL Eats : A Unit of Equitech Private Limited. All rights reserved.
-      </footer>
-    </div>
-  );
+      <Footer />
+    </main>
+  )
 }
