@@ -96,6 +96,7 @@ Notes:
 - Point return_url/notify_url to your backend, not the Next.js frontend. The backend must verify the payment (signature/status), update the order, and then redirect the user to the app (e.g., `https://kleats.in/orders` or `/order/{id}`).
 - Only use a Next.js API route for return/webhook if you’ve implemented server-side verification there.
 - In local sandbox testing, ensure domains and CORS match your backend.
+- If you prefer a frontend landing after backend verification, you can redirect users to `/payment/callback?order_id=<id>&status=<status>` which shows a short verification screen and then navigates to `/orders`.
 
 ## 📄 License
 Copyright © Equitech Lab Private Limited. All rights reserved.

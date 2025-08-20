@@ -236,7 +236,7 @@ export default function PaymentPage() {
               Authorization: token,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ orderType: "dinein", deliveryTime }),
+            body: JSON.stringify({ orderType: "dinein", deliveryTime, gateway: CASHFREE_ENABLED ? "cashfree" : "hdfc" }),
           })
           if (!res.ok) {
             const errText = await res.text().catch(() => "")
@@ -245,31 +245,30 @@ export default function PaymentPage() {
           try {
             const data = await res.json()
 
-            // Cashfree-specific handling when enabled
-            if (CASHFREE_ENABLED) {
-              const provider = (data?.provider || data?.gateway || "").toString().toLowerCase()
-              // Prefer an explicit web payment link if present
-              const webLink: string | undefined = data?.payment_links?.web || data?.payment_link || data?.redirect_url || data?.raw?.redirect_url
-              const sessionId: string | undefined = data?.raw?.payment_session_id || data?.payment_session_id
+            // Extract provider and links once
+            const provider = (data?.provider || data?.gateway || "").toString().toLowerCase()
+            const webLink: string | undefined = data?.payment_links?.web || data?.payment_link || data?.redirect_url || data?.raw?.redirect_url
+            const sessionId: string | undefined = data?.raw?.payment_session_id || data?.payment_session_id
 
-              if (provider === "cashfree" || sessionId) {
-                if (webLink && typeof window !== "undefined") {
-                  window.location.href = webLink
+            // Cashfree-specific handling when enabled
+            if (CASHFREE_ENABLED && (provider === "cashfree" || !!sessionId)) {
+              if (webLink && typeof window !== "undefined") {
+                window.location.href = webLink
+                return
+              }
+              if (sessionId) {
+                try {
+                  await loadCashfreeAndCheckout(sessionId)
                   return
-                }
-                if (sessionId) {
-                  try {
-                    await loadCashfreeAndCheckout(sessionId)
-                    return
-                  } catch (e) {
-                    // If SDK/checkout fails, surface a clear error
-                    throw new Error("Unable to start Cashfree checkout. Please try again or contact support.")
-                  }
+                } catch (e) {
+                  throw new Error("Unable to start Cashfree checkout. Please try again or contact support.")
                 }
               }
+              // If Cashfree expected but we couldn't start, block local success
+              throw new Error("Cashfree is enabled but no redirect/session was provided.")
             }
 
-            // Generic hosted payment page redirect (works for other gateways)
+            // Generic hosted payment page redirect (works for other gateways like HDFC)
             if ((data?.payment_links?.web as string | undefined) && typeof window !== "undefined") {
               window.location.href = data.payment_links.web
               return
