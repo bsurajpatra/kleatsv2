@@ -51,6 +51,10 @@ The dev server will start on http://localhost:3000 (or the next available port, 
 Create a `.env.local` if you plan to use a backend:
 ```
 NEXT_PUBLIC_API_URL=http://localhost:3000
+# Enable Cashfree (optional)
+NEXT_PUBLIC_CASHFREE=TRUE
+# sandbox | production (defaults to production if not set)
+NEXT_PUBLIC_CASHFREE_MODE=sandbox
 ```
 
 Note: Some routes use mock endpoints under `app/api/explore/*` for local development.
@@ -77,6 +81,21 @@ Note: Some routes use mock endpoints under `app/api/explore/*` for local develop
 
 ## 🤝 Contributing
 Pull requests welcome! If you’d like to contribute content or canteen data, open an issue or reach out.
+
+## 💳 Cashfree Payments (optional)
+- Toggle via `NEXT_PUBLIC_CASHFREE=TRUE` (set in `.env.local`).
+- When enabled, checkout will handle Cashfree responses from the backend.
+- Backend should return either a hosted payment URL (`payment_links.web` / `redirect_url`) or `raw.payment_session_id`.
+- If `payment_session_id` is returned, the frontend loads the Cashfree SDK and initiates checkout.
+
+Callback URLs (must be backend endpoints):
+- return_url: `https://<BACKEND_BASE_URL>/api/User/order/handlePaymentResponse?order_id={order_id}`
+- notify_url (webhook): `https://<BACKEND_BASE_URL>/cashfree/webhook`
+
+Notes:
+- Point return_url/notify_url to your backend, not the Next.js frontend. The backend must verify the payment (signature/status), update the order, and then redirect the user to the app (e.g., `https://kleats.in/orders` or `/order/{id}`).
+- Only use a Next.js API route for return/webhook if you’ve implemented server-side verification there.
+- In local sandbox testing, ensure domains and CORS match your backend.
 
 ## 📄 License
 Copyright © Equitech Lab Private Limited. All rights reserved.

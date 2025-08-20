@@ -35,6 +35,37 @@ export default function PaymentPage() {
   const [selectedSlot, setSelectedSlot] = useState<string>("")
   const [customMinutes, setCustomMinutes] = useState<number>(20)
 
+  // Cashfree toggle (client-side env must be prefixed with NEXT_PUBLIC_)
+  const CASHFREE_ENABLED = (process.env.NEXT_PUBLIC_CASHFREE || "").toString().toUpperCase() === "TRUE"
+  const CASHFREE_MODE = (process.env.NEXT_PUBLIC_CASHFREE_MODE || "production").toString().toLowerCase() === "sandbox" ? "sandbox" : "production"
+
+  // Lazy-load Cashfree SDK and trigger checkout when session id is provided
+  const loadCashfreeAndCheckout = async (paymentSessionId: string) => {
+    if (!paymentSessionId) return
+    const ensureScript = () =>
+      new Promise<void>((resolve, reject) => {
+        if (typeof window !== "undefined" && (window as any).Cashfree) {
+          resolve()
+          return
+        }
+        const s = document.createElement("script")
+        s.src = "https://sdk.cashfree.com/js/ui/2.0.0/cashfree.js"
+        s.async = true
+        s.onload = () => resolve()
+        s.onerror = () => reject(new Error("Failed to load Cashfree SDK"))
+        document.head.appendChild(s)
+      })
+    await ensureScript()
+    const CF = (window as any).Cashfree
+    try {
+      const cashfree = new CF({ mode: CASHFREE_MODE })
+      await cashfree.checkout({ paymentSessionId, redirectTarget: "_self" })
+    } catch (err) {
+      // As a fallback, let caller handle alternate redirects or show error
+      throw err
+    }
+  }
+
   useEffect(() => {
     // Redirect if not authenticated or cart is empty
     if (!isAuthenticated) {
@@ -213,8 +244,33 @@ export default function PaymentPage() {
           }
           try {
             const data = await res.json()
+
+            // Cashfree-specific handling when enabled
+            if (CASHFREE_ENABLED) {
+              const provider = (data?.provider || data?.gateway || "").toString().toLowerCase()
+              // Prefer an explicit web payment link if present
+              const webLink: string | undefined = data?.payment_links?.web || data?.payment_link || data?.redirect_url || data?.raw?.redirect_url
+              const sessionId: string | undefined = data?.raw?.payment_session_id || data?.payment_session_id
+
+              if (provider === "cashfree" || sessionId) {
+                if (webLink && typeof window !== "undefined") {
+                  window.location.href = webLink
+                  return
+                }
+                if (sessionId) {
+                  try {
+                    await loadCashfreeAndCheckout(sessionId)
+                    return
+                  } catch (e) {
+                    // If SDK/checkout fails, surface a clear error
+                    throw new Error("Unable to start Cashfree checkout. Please try again or contact support.")
+                  }
+                }
+              }
+            }
+
+            // Generic hosted payment page redirect (works for other gateways)
             if ((data?.payment_links?.web as string | undefined) && typeof window !== "undefined") {
-              // Optional: redirect user to payment page if provided by backend
               window.location.href = data.payment_links.web
               return
             }
