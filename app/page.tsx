@@ -13,7 +13,7 @@ import Footer from "@/components/footer"
 import Logo from "@/components/logo"
 import ThemeToggle from "@/components/theme-toggle"
 import { motion } from "framer-motion"
-import { Star, Clock, Utensils, Copy, Check } from "lucide-react"
+import { Star, Clock, Utensils, Copy, Check, ArrowRight } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
@@ -616,7 +616,7 @@ export default function Home() {
                     return open === true || open === null
                   })
                   .map((canteen) => (
-                    <Link href={`/canteen/${canteen.canteenId}`} key={canteen.canteenId} className="min-w-[260px] max-w-[260px]" passHref>
+                    <Link href={`/canteen/${canteen.canteenId}`} key={canteen.canteenId} className="min-w-[320px] max-w-[320px]" passHref>
                       <motion.div
                         whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
                         transition={{ type: "spring", stiffness: 300 }}
@@ -624,7 +624,7 @@ export default function Home() {
                       >
                         <Card className="overflow-hidden h-full">
                           <CardContent className="p-0">
-                            <div className="relative h-36">
+                            <div className="relative h-44">
                               <Image
                                 src={
                                   canteen.poster
@@ -638,9 +638,9 @@ export default function Home() {
                               <Badge className="absolute right-2 top-2 bg-green-500 text-white shadow-md">Open</Badge>
                             </div>
                             <div className="p-4">
-                              <h3 className="text-base font-semibold truncate">{canteen.CanteenName}</h3>
+                              <h3 className="text-lg font-semibold truncate">{canteen.CanteenName}</h3>
                               {canteen.Location && (
-                                <p className="text-xs text-muted-foreground truncate">{canteen.Location}</p>
+                                <p className="text-sm text-muted-foreground truncate">{canteen.Location}</p>
                               )}
                               <div className="mt-2 flex justify-between">
                                 <p className="text-xs text-muted-foreground">
@@ -654,17 +654,22 @@ export default function Home() {
                     </Link>
                   ))}
                 {/* View All canteens tile */}
-                <Link href="/canteens" className="min-w-[260px] max-w-[260px]" aria-label="View all canteens">
+                <Link href="/canteens" className="min-w-[320px] max-w-[320px]" aria-label="View all canteens">
                   <motion.div
                     whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
                     transition={{ type: "spring", stiffness: 300 }}
                     className="h-full"
                   >
                     <Card className="overflow-hidden h-full border-dashed">
-                      <CardContent className="p-0 h-36 flex items-center justify-center">
-                        <div className="flex flex-col items-center justify-center text-center">
-                          <Image src="/hero/bowl.svg" alt="View all canteens" width={48} height={48} className="opacity-80" />
-                          <span className="mt-2 text-sm font-medium">View All</span>
+                      <CardContent className="h-44 flex items-center justify-center p-4">
+                        <div className="flex flex-col items-center justify-center text-center gap-2">
+                          <div className="h-12 w-12 rounded-full bg-secondary/10 text-primary flex items-center justify-center">
+                            <Utensils className="h-6 w-6" />
+                          </div>
+                          <div className="flex items-center gap-2 text-sm font-medium">
+                            <span>View All Canteens</span>
+                            <ArrowRight className="h-4 w-4" />
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
