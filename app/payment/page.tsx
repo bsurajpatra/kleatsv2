@@ -15,7 +15,7 @@ import { useOrders } from "@/hooks/use-orders"
 import { useToast } from "@/hooks/use-toast"
 import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/hooks/use-auth"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
 import { Slider } from "@/components/ui/slider"
 
@@ -34,6 +34,7 @@ export default function PaymentPage() {
   const [pickupMode, setPickupMode] = useState<"asap" | "slot" | "custom">("asap")
   const [selectedSlot, setSelectedSlot] = useState<string>("")
   const [customMinutes, setCustomMinutes] = useState<number>(20)
+  const searchParams = useSearchParams()
 
   // Cashfree toggle (client-side env must be prefixed with NEXT_PUBLIC_)
   const CASHFREE_ENABLED = (process.env.NEXT_PUBLIC_CASHFREE || "").toString().toUpperCase() === "TRUE"
@@ -102,27 +103,40 @@ export default function PaymentPage() {
   const platformFee = 5
   const totalAmount = totalPrice + platformFee + tipAmount
 
-  // Generate pickup time options (15-min slots for next 2 hours)
+  // Generate pickup time options aligned to the next quarter-hour (8 x 15-min slots)
   const generateTimeOptions = () => {
-    const options = []
+    const options = [] as { value: string; label: string }[]
     const now = new Date()
-    for (let i = 1; i <= 8; i++) {
-      const time = new Date(now.getTime() + i * 15 * 60000)
+    const minutes = now.getMinutes()
+    const offset = (15 - (minutes % 15)) % 15
+    const firstIncrement = offset === 0 ? 15 : offset
+    for (let i = 0; i < 8; i++) {
+      const time = new Date(now.getTime() + (firstIncrement + i * 15) * 60000)
       const hours = time.getHours()
-      const minutes = time.getMinutes()
+      const mins = time.getMinutes()
       const ampm = hours >= 12 ? "PM" : "AM"
       const formattedHours = hours % 12 || 12
-      const formattedMinutes = minutes.toString().padStart(2, "0")
+      const formattedMinutes = mins.toString().padStart(2, "0")
       const timeString = `${formattedHours}:${formattedMinutes} ${ampm}`
       options.push({ value: timeString, label: timeString })
     }
     return options
   }
 
-  // Initialize first slot
+  // Initialize mode/slot from query params or default to first slot
   useEffect(() => {
-    const slots = generateTimeOptions()
-    if (slots.length > 0) setSelectedSlot((prev) => prev || slots[0].value)
+    const mode = (searchParams?.get("mode") || "").toLowerCase()
+    const time = searchParams?.get("time") || ""
+    if (mode === "asap") {
+      setPickupMode("asap")
+    } else if (mode === "slot" && time) {
+      setPickupMode("slot")
+      setSelectedSlot(time)
+    } else {
+      const slots = generateTimeOptions()
+      if (slots.length > 0) setSelectedSlot((prev) => prev || slots[0].value)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const formatMinutesFromNow = (mins: number) => {
@@ -140,6 +154,9 @@ export default function PaymentPage() {
     : pickupMode === "slot"
     ? selectedSlot || ""
     : formatMinutesFromNow(customMinutes)
+
+  // Whether any item has packaging selected (affects label and order type)
+  const hasPackaging = items.some((it) => !!it.packaging)
 
   // Backend cart helpers (ensure server cart matches local before placing order)
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
@@ -382,7 +399,7 @@ export default function PaymentPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
               <Card className="mb-6">
                 <CardHeader>
-                  <CardTitle>Pickup Time</CardTitle>
+                  <CardTitle>{hasPackaging ? "Pickup Time" : "Dining Time"}</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="mb-4 flex gap-2">
@@ -415,7 +432,15 @@ export default function PaymentPage() {
 
                   {pickupMode === "slot" && (
                     <div className="flex gap-2 overflow-x-auto pb-2">
-                      {generateTimeOptions().map((opt) => (
+                      {(() => {
+                        const options = generateTimeOptions()
+                        // If selectedSlot came from query and isn't in options window, prepend it once
+                        const exists = selectedSlot && options.some((o) => o.value === selectedSlot)
+                        const final = !exists && selectedSlot
+                          ? [{ value: selectedSlot, label: selectedSlot }, ...options]
+                          : options
+                        return final
+                      })().map((opt) => (
                         <Button
                           key={opt.value}
                           size="sm"
@@ -429,7 +454,7 @@ export default function PaymentPage() {
                     </div>
                   )}
 
-                  {pickupMode === "custom" && (
+      {pickupMode === "custom" && (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Minutes from now</span>
@@ -444,7 +469,7 @@ export default function PaymentPage() {
                       />
                       <div className="mt-1 flex items-center gap-2 rounded-md border p-3">
                         <Clock className="h-4 w-4" />
-                        <span>Pickup at {formatMinutesFromNow(customMinutes)}</span>
+        <span>{hasPackaging ? "Pickup" : "Dine-in"} at {formatMinutesFromNow(customMinutes)}</span>
                       </div>
                     </div>
                   )}

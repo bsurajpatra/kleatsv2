@@ -35,8 +35,12 @@ export default function CartPage() {
   const handleCheckout = () => {
     if (items.length === 0) return
 
-    // Navigate to payment page
-    router.push("/payment")
+    // Navigate to payment page with selected time so user doesn't re-enter
+    const mode = pickupTime === "asap" ? "asap" : "slot"
+    const qs = new URLSearchParams()
+    qs.set("mode", mode)
+    if (mode === "slot") qs.set("time", pickupTime)
+    router.push(`/payment?${qs.toString()}`)
   }
 
   // Generate pickup time options
