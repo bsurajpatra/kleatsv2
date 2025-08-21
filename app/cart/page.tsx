@@ -47,9 +47,15 @@ export default function CartPage() {
     // Add "As soon as possible" option
     options.push({ value: "asap", label: "As soon as possible" })
 
-    // Add time slots in 15-minute increments for the next 2 hours
-    for (let i = 1; i <= 8; i++) {
-      const time = new Date(now.getTime() + i * 15 * 60000)
+    // Start from the next quarter-hour (e.g., 1:15, 1:30, 1:45, 2:00)
+    const first = new Date(now)
+    const remainder = first.getMinutes() % 15
+    const addMinutes = remainder === 0 ? 15 : 15 - remainder
+    first.setMinutes(first.getMinutes() + addMinutes, 0, 0)
+
+    // Add time slots in 15-minute increments for the next 2 hours (8 slots)
+    for (let i = 0; i < 8; i++) {
+      const time = new Date(first.getTime() + i * 15 * 60000)
       const hours = time.getHours()
       const minutes = time.getMinutes()
       const ampm = hours >= 12 ? "PM" : "AM"
@@ -156,16 +162,20 @@ export default function CartPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
-                  Pickup Time
+                  {items.some((i) => !!i.packaging) ? "Pickup Time" : "Dining Time"}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <Label htmlFor="pickup-time" className="mb-2 block">
-                  Select when you want to pick up your order
+                  {items.some((i) => !!i.packaging)
+                    ? "Select when you want to pick up your order"
+                    : "Select when you want to dine-in"}
                 </Label>
                 <Select value={pickupTime} onValueChange={setPickupTime}>
                   <SelectTrigger id="pickup-time" className="w-full">
-                    <SelectValue placeholder="Select pickup time" />
+                    <SelectValue
+                      placeholder={items.some((i) => !!i.packaging) ? "Select pickup time" : "Select dining time"}
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     {timeOptions.map((option) => (
