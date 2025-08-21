@@ -83,10 +83,10 @@ export default function LockOverlay({ open, onUnlock }: Props) {
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 10, opacity: 0, scale: 0.98 }}
             transition={{ type: "spring", stiffness: 220, damping: 20 }}
-            className="relative mx-4 w-full max-w-lg"
+            className="relative mx-3 w-full max-w-[90vw] sm:max-w-md md:max-w-lg"
           >
             <div className="absolute -inset-[1px] rounded-2xl bg-gradient-to-br from-primary/60 via-fuchsia-500/50 to-indigo-500/50 blur" />
-            <div className="relative rounded-2xl border bg-background/85 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+            <div className="relative rounded-2xl border bg-background/85 p-4 sm:p-6 md:p-8 shadow-2xl backdrop-blur-xl">
               <div className="flex items-center justify-center mb-4">
                 <Image src="/logo.svg" alt="KL Eats" width={140} height={36} className="h-9 w-auto opacity-95" priority />
               </div>
