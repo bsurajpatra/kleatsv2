@@ -36,25 +36,49 @@ export default function PaymentCallbackPage() {
   }
 
   useEffect(() => {
-    // Simulate short verification while backend finalizes the order
+    // Show a quick progress animation
     const interval = setInterval(() => setProgress((p) => Math.min(100, p + 12)), 150)
 
     ;(async () => {
-      // Extract common payment params (may be present if backend redirected here after verifying)
       const orderId = params.get("order_id") || params.get("cf_order_id") || params.get("orderId")
-      const status = (params.get("status") || params.get("order_status") || "").toUpperCase()
+      if (!orderId) {
+        clearInterval(interval)
+        setProgress(100)
+        toast({ title: "Missing order id", description: "Redirecting to your orders..." })
+        router.replace("/orders")
+        return
+      }
 
-      // Best effort refresh, then continue UX
+      // Call backend verification endpoint
+      // Always go through the Next.js proxy to hit the backend
+      const verifyUrl = `/api/proxy/api/User/payment/cashfree/verify?order_id=${encodeURIComponent(orderId)}`
+      // Debug: surface the URL being called in case of issues
+      try { console.debug("[PaymentCallback] Verifying via:", verifyUrl) } catch {}
+      let ok: boolean | undefined = undefined
+      try {
+        const res = await fetch(verifyUrl, {
+          method: "GET",
+          headers: token ? { Authorization: token } : undefined,
+          cache: "no-store",
+        })
+        // Even if non-200, try to read payload for status
+        try { console.debug("[PaymentCallback] Verify status:", res.status) } catch {}
+        const data: any = await res.json().catch(() => ({}))
+        const status = (data?.status || data?.order_status || "").toString().toUpperCase()
+        ok = ["PAID", "SUCCESS", "COMPLETED", "CHARGED"].includes(status)
+      } catch {
+        // Network/parse failure — leave ok undefined, we will still redirect and let orders page reflect reality
+      }
+
+      // Best effort: refresh orders to reflect latest state
       await refreshOrders()
 
-      // Small delay to allow backend state to settle
-      await new Promise((r) => setTimeout(r, 1200))
+      // Wrap up UX
+      await new Promise((r) => setTimeout(r, 600))
       setVerified(true)
       clearInterval(interval)
       setProgress(100)
 
-      // Friendly feedback
-      const ok = status ? ["PAID", "SUCCESS", "COMPLETED"].includes(status) : undefined
       toast({
         title: ok === false ? "Payment not confirmed yet" : "Payment verified",
         description:
@@ -63,14 +87,8 @@ export default function PaymentCallbackPage() {
             : "Redirecting to your orders to view the latest status...",
       })
 
-      // Redirect to orders or a specific order page if you prefer
       setTimeout(() => {
-        if (orderId) {
-          // You can switch to `/order/${orderId}` if your app supports deep linking
-          router.replace("/orders")
-        } else {
-          router.replace("/orders")
-        }
+        router.replace("/orders")
       }, 900)
     })()
 
