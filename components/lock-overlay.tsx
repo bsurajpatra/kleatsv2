@@ -23,6 +23,18 @@ export default function LockOverlay({ open, onUnlock }: Props) {
     }
   }, [open])
 
+  // Prevent background scroll on mobile when overlay is open
+  useEffect(() => {
+    if (!open) return
+    const prev = {
+      overflow: document.body.style.overflow,
+    }
+    document.body.style.overflow = "hidden"
+    return () => {
+      document.body.style.overflow = prev.overflow
+    }
+  }, [open])
+
   const submit = () => {
     if (code.trim() === "GLUG") {
       setSuccess(true)
@@ -48,7 +60,10 @@ export default function LockOverlay({ open, onUnlock }: Props) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-50 grid place-items-center bg-black/70 backdrop-blur-2xl lg:backdrop-blur-3xl backdrop-saturate-50"
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[1000] grid min-h-[100svh] place-items-center bg-black/70 backdrop-blur-2xl lg:backdrop-blur-3xl backdrop-saturate-50 overflow-y-auto overscroll-contain p-4"
+          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           {/* Floating particles/shine */}
           <motion.div
