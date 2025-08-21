@@ -58,6 +58,15 @@ export default function Home() {
   const { isAuthenticated } = useAuth()
   const router = useRouter()
   const [copiedOffer, setCopiedOffer] = useState<number | null>(null)
+  const [categoriesExpanded, setCategoriesExpanded] = useState(false)
+  const shuffledCategories = useMemo(() => {
+    const arr = [...apiCategories]
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1))
+      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    }
+    return arr
+  }, [apiCategories, categoriesExpanded])
 
   // helper to check open status moved to lib/utils as isOpenNow
 
@@ -388,28 +397,102 @@ export default function Home() {
               }}
             >
               <h2 className="mb-4 text-xl font-bold tracking-tight">Food Categories</h2>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-                {apiCategories.map((category) => (
-                  <Link href={`/category/${encodeURIComponent(category.name)}`} key={category.name} passHref>
-                    <motion.div whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }} transition={{ type: "spring", stiffness: 300 }}>
-                      <Card className="overflow-hidden bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 h-full">
-                        <CardContent className="flex flex-col items-center justify-center p-4 text-center">
-                          <div className="mb-3 rounded-full bg-secondary/10 p-2 transform group-hover:scale-110 transition-transform duration-300">
-                            <Image
-                              src={category.poster ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")}${category.poster.startsWith("/") ? category.poster : `/${category.poster}`}` : "/placeholder.svg"}
-                              alt={category.name}
-                              width={60}
-                              height={60}
-                              className="h-15 w-15 rounded-full object-cover"
-                            />
+              {!categoriesExpanded ? (
+                <div className="flex gap-4 overflow-x-auto pb-1">
+                  {shuffledCategories.map((category) => (
+                    <Link
+                      href={`/category/${encodeURIComponent(category.name)}`}
+                      key={category.name}
+                      className="min-w-[130px] max-w-[130px]"
+                    >
+                      <motion.div
+                        whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                      >
+                        <Card className="overflow-hidden bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 h-full">
+                          <CardContent className="flex flex-col items-center justify-center p-3 text-center">
+                            <div className="mb-2 rounded-full bg-secondary/10 p-2">
+                              <Image
+                                src={
+                                  category.poster
+                                    ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")}${category.poster.startsWith("/") ? category.poster : `/${category.poster}`}`
+                                    : "/placeholder.svg"
+                                }
+                                alt={category.name}
+                                width={48}
+                                height={48}
+                                className="h-12 w-12 rounded-full object-cover"
+                              />
+                            </div>
+                            <h3 className="text-xs font-semibold truncate w-full">{category.name}</h3>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    </Link>
+                  ))}
+                  {/* View All tile */}
+                  <button
+                    onClick={() => setCategoriesExpanded(true)}
+                    className="min-w-[130px] max-w-[130px]"
+                    aria-label="View all categories"
+                  >
+                    <motion.div
+                      whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
+                      transition={{ type: "spring", stiffness: 300 }}
+                    >
+                      <Card className="overflow-hidden h-full border-dashed">
+                        <CardContent className="flex flex-col items-center justify-center p-3 text-center h-[106px]">
+                          <div className="mb-2 rounded-full bg-secondary/10 p-2">
+                            <Utensils className="h-6 w-6" />
                           </div>
-                          <h3 className="text-sm font-semibold">{category.name}</h3>
+                          <span className="text-xs font-semibold">View All</span>
                         </CardContent>
                       </Card>
                     </motion.div>
-                  </Link>
-                ))}
-              </div>
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+                    {shuffledCategories.map((category) => (
+                      <Link href={`/category/${encodeURIComponent(category.name)}`} key={category.name} passHref>
+                        <motion.div
+                          whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
+                          transition={{ type: "spring", stiffness: 300 }}
+                        >
+                          <Card className="overflow-hidden bg-card/60 backdrop-blur supports-[backdrop-filter]:bg-card/40 h-full">
+                            <CardContent className="flex flex-col items-center justify-center p-4 text-center">
+                              <div className="mb-3 rounded-full bg-secondary/10 p-2">
+                                <Image
+                                  src={
+                                    category.poster
+                                      ? `${(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")}${category.poster.startsWith("/") ? category.poster : `/${category.poster}`}`
+                                      : "/placeholder.svg"
+                                  }
+                                  alt={category.name}
+                                  width={60}
+                                  height={60}
+                                  className="h-15 w-15 rounded-full object-cover"
+                                />
+                              </div>
+                              <h3 className="text-sm font-semibold">{category.name}</h3>
+                            </CardContent>
+                          </Card>
+                        </motion.div>
+                      </Link>
+                    ))}
+                  </div>
+                  <div className="mt-3 flex justify-center">
+                    <button
+                      onClick={() => setCategoriesExpanded(false)}
+                      className="text-sm font-medium text-primary hover:underline"
+                      aria-label="Show fewer categories"
+                    >
+                      Show less
+                    </button>
+                  </div>
+                </>
+              )}
             </motion.section>
 
             <motion.section
@@ -525,27 +608,23 @@ export default function Home() {
             >
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-bold tracking-tight">Our Canteens</h2>
-                <Link
-                  href="/canteens"
-                  className="text-sm font-medium text-primary hover:underline"
-                  aria-label="View all canteens"
-                >
-                  View all
-                </Link>
               </div>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="flex gap-4 overflow-x-auto pb-1">
                 {apiCanteens
                   .filter((c) => {
                     const open = isOpenNow(c.fromTime, c.ToTime)
                     return open === true || open === null
                   })
-                  .slice(0, 6)
                   .map((canteen) => (
-                    <Link href={`/canteen/${canteen.canteenId}`} key={canteen.canteenId} passHref>
-                      <motion.div whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }} transition={{ type: "spring", stiffness: 300 }} className="h-full">
+                    <Link href={`/canteen/${canteen.canteenId}`} key={canteen.canteenId} className="min-w-[260px] max-w-[260px]" passHref>
+                      <motion.div
+                        whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
+                        transition={{ type: "spring", stiffness: 300 }}
+                        className="h-full"
+                      >
                         <Card className="overflow-hidden h-full">
                           <CardContent className="p-0">
-                            <div className="relative h-40">
+                            <div className="relative h-36">
                               <Image
                                 src={
                                   canteen.poster
@@ -559,9 +638,9 @@ export default function Home() {
                               <Badge className="absolute right-2 top-2 bg-green-500 text-white shadow-md">Open</Badge>
                             </div>
                             <div className="p-4">
-                              <h3 className="text-lg font-semibold">{canteen.CanteenName}</h3>
+                              <h3 className="text-base font-semibold truncate">{canteen.CanteenName}</h3>
                               {canteen.Location && (
-                                <p className="text-sm text-muted-foreground">{canteen.Location}</p>
+                                <p className="text-xs text-muted-foreground truncate">{canteen.Location}</p>
                               )}
                               <div className="mt-2 flex justify-between">
                                 <p className="text-xs text-muted-foreground">
@@ -574,6 +653,23 @@ export default function Home() {
                       </motion.div>
                     </Link>
                   ))}
+                {/* View All canteens tile */}
+                <Link href="/canteens" className="min-w-[260px] max-w-[260px]" aria-label="View all canteens">
+                  <motion.div
+                    whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
+                    transition={{ type: "spring", stiffness: 300 }}
+                    className="h-full"
+                  >
+                    <Card className="overflow-hidden h-full border-dashed">
+                      <CardContent className="p-0 h-36 flex items-center justify-center">
+                        <div className="flex flex-col items-center justify-center text-center">
+                          <Image src="/hero/bowl.svg" alt="View all canteens" width={48} height={48} className="opacity-80" />
+                          <span className="mt-2 text-sm font-medium">View All</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                </Link>
               </div>
             </motion.section>
           </motion.div>
