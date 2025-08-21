@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import PhoneVerificationForm from "@/components/phone-verification-form"
-import { useToast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import LoadingScreen from "@/components/loading-screen"
 
 export default function PhoneVerificationPage() {
@@ -16,7 +16,7 @@ export default function PhoneVerificationPage() {
     const checkPhoneStatus = async () => {
       try {
         // Get token from localStorage
-        const token = localStorage.getItem("auth_token")
+  const token = localStorage.getItem("auth_token") || localStorage.getItem("token")
         
         if (!token) {
           // Not logged in, redirect to login
@@ -31,8 +31,8 @@ export default function PhoneVerificationPage() {
         
         console.log("Checking phone verification status...")
         
-        // Call external API to check phone status (mirror Postman exactly)
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/User/auth/check-phone-status`, {
+  // Call backend via proxy to check phone status (mirror Postman exactly)
+  const response = await fetch(`/api/proxy/api/User/auth/check-phone-status`, {
           method: "POST",
           // Backend expects raw token in Authorization header (no Bearer prefix)
           headers: {
@@ -48,14 +48,16 @@ export default function PhoneVerificationPage() {
           throw new Error(`Failed to check phone status: ${response.status}`)
         }
         
-        const data = await response.json()
+        const data = await response.json().catch(() => ({} as any))
         console.log("Phone status response:", data)
+        const code = typeof data?.code === "number" ? data.code : 0
+        const isPhoneZero = Boolean(data?.data?.isPhoneZero)
         
         // If isPhoneZero is true, user needs to verify phone
-        if (data.data.isPhoneZero) {
+        if (code === 1 && isPhoneZero) {
           console.log("Phone verification needed")
           setNeedsVerification(true)
-        } else {
+        } else if (code === 1) {
           // Phone already verified, redirect to home
           console.log("Phone already verified, redirecting to home")
           toast({
@@ -63,6 +65,8 @@ export default function PhoneVerificationPage() {
             description: "Your account is already set up.",
           })
           router.push("/")
+        } else {
+          throw new Error("Unexpected response from phone status check")
         }
       } catch (error: any) {
         console.error("Error checking phone status:", error)
