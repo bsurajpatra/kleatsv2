@@ -230,13 +230,18 @@ export default function PaymentPage() {
             }
           } catch {}
 
+          // Determine orderType based on packaging selection
+          const isPackagingSelected = items.some((it) => !!it.packaging)
+          const orderType = isPackagingSelected ? "pickup" : "dinein"
+          const gateway = "cashfree"
+
           const res = await fetch(`${baseUrl}/api/User/order/placeOrder`, {
             method: "POST",
             headers: {
               Authorization: token,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ orderType: "dinein", deliveryTime, gateway: CASHFREE_ENABLED ? "cashfree" : "hdfc" }),
+            body: JSON.stringify({ orderType, deliveryTime, gateway }),
           })
           if (!res.ok) {
             const errText = await res.text().catch(() => "")
