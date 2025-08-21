@@ -51,7 +51,19 @@ export default function OrdersPage() {
         } catch {
           throw new Error("Invalid JSON response")
         }
-        const list: AnyOrder[] = Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []
+        // Support multiple shapes: [..], { data: [...] }, { data: { items: [...] } }, { items: [...] }, { orders: [...] }
+        let list: AnyOrder[] = []
+        if (Array.isArray(data)) {
+          list = data
+        } else if (Array.isArray(data?.data)) {
+          list = data.data
+        } else if (Array.isArray(data?.data?.items)) {
+          list = data.data.items
+        } else if (Array.isArray(data?.items)) {
+          list = data.items
+        } else if (Array.isArray(data?.orders)) {
+          list = data.orders
+        }
         if (active) setOrders(list)
       } catch (e: any) {
         console.error("Failed to load orders", e)
@@ -135,10 +147,22 @@ function normalizeOrder(src: AnyOrder) {
     src.canteenId ?? src.CanteenId ?? src.canteen_id ?? src.canteen?.id ?? src.canteen?.canteenId ?? null
   const canteenName = src.canteenName ?? src.CanteenName ?? src.canteen?.name ?? src.canteen?.CanteenName ?? ""
   const date = src.createdAt ?? src.orderDate ?? src.OrderDate ?? src.orderTime ?? null
-  const total = src.totalAmount ?? src.total ?? src.TotalAmount ?? null
+  let total = src.totalAmount ?? src.total ?? src.TotalAmount ?? null
   const status = src.status ?? src.orderStatus ?? src.OrderStatus ?? null
 
   const rawItems = src.items ?? src.orderItems ?? src.Items ?? []
+  // Compute a total if missing
+  if (total == null && Array.isArray(rawItems)) {
+    try {
+      const itemsTotal = rawItems.reduce((sum: number, it: any) => {
+        const price = Number(it.Price ?? it.price ?? it.amount ?? 0)
+        const qty = Number(it.Quantity ?? it.quantity ?? it.qty ?? 1)
+        return sum + price * qty
+      }, 0)
+      const extras = Number(src.parcelPrice ?? src.deliveryFee ?? 0)
+      total = Math.max(0, Math.round((itemsTotal + extras) * 100) / 100)
+    } catch {}
+  }
   const itemsLabel = Array.isArray(rawItems)
     ? rawItems
         .map((it: any) => {
