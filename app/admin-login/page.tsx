@@ -86,15 +86,6 @@ export default function AdminLoginPage() {
                   required
                 />
               </div>
-              <div className="rounded-lg bg-red-50 p-3">
-                <p className="text-xs text-red-700">
-                  <strong>Demo Credentials:</strong>
-                  <br />
-                  Email: admin@gmail.com
-                  <br />
-                  Password: admin
-                </p>
-              </div>
             </CardContent>
             <CardFooter className="flex flex-col">
               <Button type="submit" className="w-full" disabled={isLoading}>

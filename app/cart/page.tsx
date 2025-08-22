@@ -20,17 +20,20 @@ import { useRouter } from "next/navigation"
 export default function CartPage() {
   const { items, removeItem, updateQuantity, togglePackaging, totalPrice, clearCart, canClearCart } = useCart()
   const { toast } = useToast()
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, isInitialized } = useAuth()
   const router = useRouter()
   const [pickupTime, setPickupTime] = useState("asap")
   const [isProcessing, setIsProcessing] = useState(false)
 
-  // Redirect if not authenticated
+  // Redirect to login only after auth state is initialized, and preserve return URL
   useEffect(() => {
+    if (!isInitialized) return
     if (!isAuthenticated) {
-      router.push("/login")
+      const params = new URLSearchParams()
+      params.set("returnTo", "/cart")
+      router.push(`/login?${params.toString()}`)
     }
-  }, [isAuthenticated, router])
+  }, [isAuthenticated, isInitialized, router])
 
   const handleCheckout = () => {
     if (items.length === 0) return
@@ -132,8 +135,8 @@ export default function CartPage() {
                           )}
                         </div>
                         <div className="mt-4 flex items-center justify-between">
-                          <Button variant="ghost" size="icon" onClick={() => removeItem(item.id)}>
-                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          <Button variant="destructive" size="icon" onClick={() => removeItem(item.id)} aria-label="Remove item">
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                           <div className="flex items-center gap-2">
                             <Button

@@ -25,6 +25,7 @@ type AuthContextType = {
   isCanteenOwner: boolean
   isAdmin: boolean
   isCanteenWorker: boolean
+  isInitialized: boolean
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -37,6 +38,7 @@ const AuthContext = createContext<AuthContextType>({
   isCanteenOwner: false,
   isAdmin: false,
   isCanteenWorker: false,
+  isInitialized: false,
 })
 
 // Mock users for demo
@@ -229,6 +231,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isCanteenOwner: !!user && user.role === "canteen_owner",
         isAdmin: !!user && user.role === "admin",
         isCanteenWorker: !!user && user.role === "canteen_worker",
+  isInitialized,
       }}
     >
       {children}

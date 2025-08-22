@@ -84,15 +84,6 @@ export default function WorkerLoginPage() {
                   required
                 />
               </div>
-              <div className="rounded-lg bg-blue-50 p-3">
-                <p className="text-xs text-blue-700">
-                  <strong>Demo Credentials:</strong>
-                  <br />
-                  Email: adda@gmail.com
-                  <br />
-                  Password: adda
-                </p>
-              </div>
             </CardContent>
             <CardFooter className="flex flex-col">
               <Button type="submit" className="w-full" disabled={isLoading}>

@@ -83,9 +83,14 @@ export default function LoginPage() {
       setError("Google OAuth is not configured. Please set NEXT_PUBLIC_GOOGLE_CLIENT_ID.")
       return
     }
+    // Preserve return URL across the OAuth roundtrip
+    try {
+      const rt = searchParams?.get("returnTo")
+      if (rt) sessionStorage.setItem("postLoginReturnTo", rt)
+    } catch {}
     // Same-page redirect to Google; on return, we read ?code= from URL and exchange it via our proxy
     window.location.href = googleAuthUrl
-  }, [googleAuthUrl, hasClientId])
+  }, [googleAuthUrl, hasClientId, searchParams])
 
   // Handle OAuth callback (?code=...)
   useEffect(() => {
@@ -209,9 +214,19 @@ export default function LoginPage() {
     throw new Error("Failed to complete authentication: Storage error")
   }
 
-        // Instead of directly going home, redirect to profile completion check
-        // This will automatically redirect to home if the user's profile is complete
-        window.location.replace("/complete-profile")
+        // After login, route via complete-profile (which will check phone setup)
+        // Preserve returnTo from query or sessionStorage so user returns to original page (e.g., /cart)
+        let returnTo = searchParams?.get("returnTo") || "/"
+        if (!returnTo) returnTo = "/"
+        if (returnTo === "/") {
+          try {
+            const stored = sessionStorage.getItem("postLoginReturnTo")
+            if (stored) returnTo = stored
+            sessionStorage.removeItem("postLoginReturnTo")
+          } catch {}
+        }
+        const sep = returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""
+        window.location.replace(`/complete-profile${sep}`)
       } catch (err: any) {
         console.error(err)
         setError(err?.message || "An error occurred. Please try again.")

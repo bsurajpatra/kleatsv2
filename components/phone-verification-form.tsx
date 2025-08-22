@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { useToast } from "@/components/ui/use-toast"
 import { useAuth } from "@/hooks/use-auth"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 export default function PhoneVerificationForm() {
   const [phoneNo, setPhoneNo] = useState("")
@@ -22,6 +22,7 @@ export default function PhoneVerificationForm() {
   
   const { toast } = useToast()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { updateUser } = useAuth()
 
   const validateForm = () => {
@@ -127,8 +128,9 @@ export default function PhoneVerificationForm() {
         // We could update other user properties here if needed
       })
       
-      // Redirect to home page or dashboard
-      router.push("/")
+  // Redirect back to original page if provided
+  const returnTo = searchParams?.get("returnTo") || "/"
+  router.push(returnTo)
       
     } catch (error: any) {
       toast({

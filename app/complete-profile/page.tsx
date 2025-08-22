@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import PhoneVerificationForm from "@/components/phone-verification-form"
 import { useToast } from "@/hooks/use-toast"
 import LoadingScreen from "@/components/loading-screen"
@@ -10,6 +10,7 @@ export default function PhoneVerificationPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [needsVerification, setNeedsVerification] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
 
   useEffect(() => {
@@ -64,7 +65,8 @@ export default function PhoneVerificationPage() {
             title: "Welcome back!",
             description: "Your account is already set up.",
           })
-          router.push("/")
+          const returnTo = searchParams?.get("returnTo") || "/"
+          router.push(returnTo)
         } else {
           throw new Error("Unexpected response from phone status check")
         }
@@ -90,7 +92,7 @@ export default function PhoneVerificationPage() {
     }
     
     checkPhoneStatus()
-  }, [router, toast])
+  }, [router, toast, searchParams])
 
   if (isLoading) {
     return <LoadingScreen />
