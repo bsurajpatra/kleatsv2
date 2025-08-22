@@ -191,7 +191,7 @@ export default function CartPage() {
                               onCheckedChange={() => togglePackaging(item.id)}
                             />
                             <Label htmlFor={`packaging-${item.id}`} className="flex items-center text-sm whitespace-nowrap">
-                              <Package className="mr-1 h-3 w-3" /> Packaging (+₹10)
+                              <Package className="mr-1 h-3 w-3" /> Packaging
                             </Label>
                             {item.packaging && (
                               <span className="ml-2 text-xs text-muted-foreground">+₹{10 * item.quantity}</span>
