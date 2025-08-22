@@ -11,18 +11,20 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Separator } from "@/components/ui/separator"
 import { useCart } from "@/hooks/use-cart"
 import { useToast } from "@/hooks/use-toast"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
+import { Slider } from "@/components/ui/slider"
 
 export default function CartPage() {
   const { items, removeItem, updateQuantity, togglePackaging, totalPrice, clearCart, canClearCart } = useCart()
   const { toast } = useToast()
   const { isAuthenticated, isInitialized } = useAuth()
   const router = useRouter()
-  const [pickupTime, setPickupTime] = useState("asap")
+  const [pickupMode, setPickupMode] = useState<"asap" | "slot" | "custom">("asap")
+  const [selectedSlot, setSelectedSlot] = useState<string>("")
+  const [customMinutes, setCustomMinutes] = useState<number>(20)
   const [isProcessing, setIsProcessing] = useState(false)
 
   // Redirect to login only after auth state is initialized, and preserve return URL
@@ -39,48 +41,51 @@ export default function CartPage() {
     if (items.length === 0) return
 
     // Navigate to payment page with selected time so user doesn't re-enter
-    const mode = pickupTime === "asap" ? "asap" : "slot"
+    const mode = pickupMode
     const qs = new URLSearchParams()
     qs.set("mode", mode)
-    if (mode === "slot") qs.set("time", pickupTime)
+    if (mode === "slot") qs.set("time", selectedSlot)
+    if (mode === "custom") qs.set("mins", String(customMinutes))
     router.push(`/payment?${qs.toString()}`)
   }
 
-  // Generate pickup time options
+  // Generate pickup time options (8 x 15-min slots starting from next quarter-hour)
   const generateTimeOptions = () => {
-    const options = []
+    const options: { value: string; label: string }[] = []
     const now = new Date()
-
-    // Add "As soon as possible" option
-    options.push({ value: "asap", label: "As soon as possible" })
-
-    // Start from the next quarter-hour (e.g., 1:15, 1:30, 1:45, 2:00)
-    const first = new Date(now)
-    const remainder = first.getMinutes() % 15
-    const addMinutes = remainder === 0 ? 15 : 15 - remainder
-    first.setMinutes(first.getMinutes() + addMinutes, 0, 0)
-
-    // Add time slots in 15-minute increments for the next 2 hours (8 slots)
+    const minutes = now.getMinutes()
+    const offset = (15 - (minutes % 15)) % 15
+    const firstIncrement = offset === 0 ? 15 : offset
     for (let i = 0; i < 8; i++) {
-      const time = new Date(first.getTime() + i * 15 * 60000)
+      const time = new Date(now.getTime() + (firstIncrement + i * 15) * 60000)
       const hours = time.getHours()
-      const minutes = time.getMinutes()
+      const mins = time.getMinutes()
       const ampm = hours >= 12 ? "PM" : "AM"
       const formattedHours = hours % 12 || 12
-      const formattedMinutes = minutes.toString().padStart(2, "0")
+      const formattedMinutes = mins.toString().padStart(2, "0")
       const timeString = `${formattedHours}:${formattedMinutes} ${ampm}`
       options.push({ value: timeString, label: timeString })
     }
-
     return options
   }
 
-  const timeOptions = generateTimeOptions()
+  const formatMinutesFromNow = (mins: number) => {
+    const t = new Date(Date.now() + mins * 60000)
+    const h = t.getHours()
+    const m = t.getMinutes()
+    const ampm = h >= 12 ? "PM" : "AM"
+    const hh = h % 12 || 12
+    const mm = m.toString().padStart(2, "0")
+    return `${hh}:${mm} ${ampm}`
+  }
 
   // Calculate packaging cost
   const packagingCost = items.reduce((total, item) => {
     return total + (item.packaging ? 7 * item.quantity : 0)
   }, 0)
+
+  // Gateway charge: ceil of 3% of the total (including packaging)
+  const gatewayCharge = Math.ceil(totalPrice * 0.03)
 
   return (
     <div className="min-h-screen pb-16 page-transition">
@@ -202,25 +207,52 @@ export default function CartPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Label htmlFor="pickup-time" className="mb-2 block">
+                <Label className="mb-2 block">
                   {items.some((i) => !!i.packaging)
                     ? "Select when you want to pick up your order"
                     : "Select when you want to dine-in"}
                 </Label>
-                <Select value={pickupTime} onValueChange={setPickupTime}>
-                  <SelectTrigger id="pickup-time" className="w-full">
-                    <SelectValue
-                      placeholder={items.some((i) => !!i.packaging) ? "Select pickup time" : "Select dining time"}
-                    />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
+                <div className="mb-4 flex gap-2">
+                  <Button variant={pickupMode === "asap" ? "default" : "outline"} onClick={() => setPickupMode("asap")}>ASAP</Button>
+                  <Button variant={pickupMode === "slot" ? "default" : "outline"} onClick={() => setPickupMode("slot")}>Slots</Button>
+                  <Button variant={pickupMode === "custom" ? "default" : "outline"} onClick={() => setPickupMode("custom")}>Custom</Button>
+                </div>
+
+                {pickupMode === "asap" && (
+                  <div className="flex items-center gap-2 rounded-md border p-3">
+                    <Clock className="h-4 w-4" />
+                    <span>As soon as possible</span>
+                  </div>
+                )}
+
+                {pickupMode === "slot" && (
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {generateTimeOptions().map((opt) => (
+                      <Button
+                        key={opt.value}
+                        variant={selectedSlot === opt.value ? "default" : "outline"}
+                        onClick={() => setSelectedSlot(opt.value)}
+                        className="whitespace-nowrap"
+                      >
+                        {opt.label}
+                      </Button>
                     ))}
-                  </SelectContent>
-                </Select>
+                  </div>
+                )}
+
+                {pickupMode === "custom" && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-muted-foreground">Minutes from now</span>
+                      <span className="text-sm font-medium">{customMinutes} min</span>
+                    </div>
+                    <Slider value={[customMinutes]} onValueChange={(val) => setCustomMinutes(val[0] as number)} min={5} max={120} step={5} />
+                    <div className="mt-1 flex items-center gap-2 rounded-md border p-3">
+                      <Clock className="h-4 w-4" />
+                      <span>{items.some((i) => !!i.packaging) ? "Pickup" : "Dine-in"} at {formatMinutesFromNow(customMinutes)}</span>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -240,13 +272,13 @@ export default function CartPage() {
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span>Platform fee</span>
-                  <span>₹5</span>
+                  <span>Gateway Charge (3%)</span>
+                  <span>₹{gatewayCharge}</span>
                 </div>
                 <Separator className="my-2" />
                 <div className="flex items-center justify-between font-medium">
                   <span>Total</span>
-                  <span>₹{totalPrice + 5}</span>
+                  <span>₹{totalPrice + gatewayCharge}</span>
                 </div>
               </CardContent>
               <CardFooter>

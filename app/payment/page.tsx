@@ -17,7 +17,7 @@ import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
-import { Slider } from "@/components/ui/slider"
+// Removed interactive slider; time is selected on the cart page
 
 export default function PaymentPage() {
   const { items, totalPrice, clearCart, canteenName, canClearCart } = useCart()
@@ -26,8 +26,7 @@ export default function PaymentPage() {
   const { user, isAuthenticated } = useAuth()
   const router = useRouter()
 
-  const [tipPercentage, setTipPercentage] = useState(0)
-  const [customTip, setCustomTip] = useState("")
+  // Tips removed for a simplified confirmation page
   const [isProcessing, setIsProcessing] = useState(false)
   const [paymentSuccess, setPaymentSuccess] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -79,29 +78,9 @@ export default function PaymentPage() {
     }
   }, [items, paymentSuccess, isAuthenticated, router])
 
-  const handleTipSelection = (percentage: number) => {
-    setTipPercentage(percentage)
-    setCustomTip("")
-  }
-
-  const handleCustomTipChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    if (value === "" || /^\d+$/.test(value)) {
-      setCustomTip(value)
-      setTipPercentage(0)
-    }
-  }
-
-  const calculateTip = () => {
-    if (customTip) {
-      return Number.parseInt(customTip, 10)
-    }
-    return Math.round((totalPrice * tipPercentage) / 100)
-  }
-
-  const tipAmount = calculateTip()
-  const platformFee = 5
-  const totalAmount = totalPrice + platformFee + tipAmount
+  const tipAmount = 0
+  const gatewayCharge = Math.ceil(totalPrice * 0.03)
+  const totalAmount = totalPrice + gatewayCharge + tipAmount
 
   // Generate pickup time options aligned to the next quarter-hour (8 x 15-min slots)
   const generateTimeOptions = () => {
@@ -123,18 +102,22 @@ export default function PaymentPage() {
     return options
   }
 
-  // Initialize mode/slot from query params or default to first slot
+  // Initialize mode/slot from query params; time is decided on cart page
   useEffect(() => {
     const mode = (searchParams?.get("mode") || "").toLowerCase()
     const time = searchParams?.get("time") || ""
+    const mins = Number(searchParams?.get("mins") || "0")
     if (mode === "asap") {
       setPickupMode("asap")
     } else if (mode === "slot" && time) {
       setPickupMode("slot")
       setSelectedSlot(time)
+    } else if (mode === "custom" && !Number.isNaN(mins) && mins > 0) {
+      setPickupMode("custom")
+      setCustomMinutes(mins)
     } else {
-      const slots = generateTimeOptions()
-      if (slots.length > 0) setSelectedSlot((prev) => prev || slots[0].value)
+      // Fallback to ASAP if params are missing
+      setPickupMode("asap")
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -402,154 +385,30 @@ export default function PaymentPage() {
                   <CardTitle>{hasPackaging ? "Pickup Time" : "Dining Time"}</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="mb-4 flex gap-2">
-                    <Button
-                      variant={pickupMode === "asap" ? "default" : "outline"}
-                      onClick={() => setPickupMode("asap")}
-                    >
-                      ASAP
-                    </Button>
-                    <Button
-                      variant={pickupMode === "slot" ? "default" : "outline"}
-                      onClick={() => setPickupMode("slot")}
-                    >
-                      Slots
-                    </Button>
-                    <Button
-                      variant={pickupMode === "custom" ? "default" : "outline"}
-                      onClick={() => setPickupMode("custom")}
-                    >
-                      Custom
-                    </Button>
+                  <div className="flex items-center gap-2 rounded-md border p-3">
+                    <Clock className="h-4 w-4" />
+                    <span>{displayPickupTime}</span>
                   </div>
-
-                  {pickupMode === "asap" && (
-                    <div className="flex items-center gap-2 rounded-md border p-3">
-                      <Clock className="h-4 w-4" />
-                      <span>As soon as possible</span>
-                    </div>
-                  )}
-
-                  {pickupMode === "slot" && (
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {(() => {
-                        const options = generateTimeOptions()
-                        // If selectedSlot came from query and isn't in options window, prepend it once
-                        const exists = selectedSlot && options.some((o) => o.value === selectedSlot)
-                        const final = !exists && selectedSlot
-                          ? [{ value: selectedSlot, label: selectedSlot }, ...options]
-                          : options
-                        return final
-                      })().map((opt) => (
-                        <Button
-                          key={opt.value}
-                          size="sm"
-                          variant={selectedSlot === opt.value ? "default" : "outline"}
-                          onClick={() => setSelectedSlot(opt.value)}
-                          className="whitespace-nowrap"
-                        >
-                          {opt.label}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-
-      {pickupMode === "custom" && (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Minutes from now</span>
-                        <span className="text-sm font-medium">{customMinutes} min</span>
-                      </div>
-                      <Slider
-                        value={[customMinutes]}
-                        onValueChange={(val) => setCustomMinutes(val[0] as number)}
-                        min={5}
-                        max={120}
-                        step={5}
-                      />
-                      <div className="mt-1 flex items-center gap-2 rounded-md border p-3">
-                        <Clock className="h-4 w-4" />
-        <span>{hasPackaging ? "Pickup" : "Dine-in"} at {formatMinutesFromNow(customMinutes)}</span>
-                      </div>
-                    </div>
-                  )}
+                  <p className="mt-2 text-xs text-muted-foreground">Time was selected on the previous step.</p>
                 </CardContent>
               </Card>
             </motion.div>
 
             {/* Payment methods removed intentionally */}
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.2 }}
-            >
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.2 }}>
               <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle>Add a Tip</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-2">
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant={tipPercentage === 5 ? "default" : "outline"}
-                        onClick={() => handleTipSelection(5)}
-                        className="w-full"
-                      >
-                        5% (₹{Math.round(totalPrice * 0.05)})
-                      </Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant={tipPercentage === 10 ? "default" : "outline"}
-                        onClick={() => handleTipSelection(10)}
-                        className="w-full"
-                      >
-                        10% (₹{Math.round(totalPrice * 0.1)})
-                      </Button>
-                    </motion.div>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <Button
-                        variant={tipPercentage === 15 ? "default" : "outline"}
-                        onClick={() => handleTipSelection(15)}
-                        className="w-full"
-                      >
-                        15% (₹{Math.round(totalPrice * 0.15)})
-                      </Button>
-                    </motion.div>
-                  </div>
-                  <div className="mt-3">
-                    <Label htmlFor="custom-tip">Custom Tip (₹)</Label>
-                    <Input
-                      id="custom-tip"
-                      type="text"
-                      placeholder="Enter amount"
-                      value={customTip}
-                      onChange={handleCustomTipChange}
-                      className="mt-1"
-                    />
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.3 }}
-            >
-              <Card>
                 <CardHeader>
                   <CardTitle>Order Summary</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent>
                   <div className="flex items-center justify-between">
                     <span>Subtotal</span>
                     <span>₹{totalPrice}</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Platform fee</span>
-                    <span>₹{platformFee}</span>
+                    <span>Gateway Charge (3%)</span>
+                    <span>₹{gatewayCharge}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Tip</span>
