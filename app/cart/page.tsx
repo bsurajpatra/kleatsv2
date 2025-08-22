@@ -124,7 +124,7 @@ export default function CartPage() {
 
   // Calculate packaging cost
   const packagingCost = items.reduce((total, item) => {
-    return total + (item.packaging ? 7 * item.quantity : 0)
+    return total + (item.packaging ? 10 * item.quantity : 0)
   }, 0)
 
   // Gateway charge: ceil of 3% of the total (including packaging)
@@ -178,9 +178,7 @@ export default function CartPage() {
                           <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
                         </div>
                       )}
-                      {unavailableMap[item.id] && (
-                        <p className="mt-2 text-xs text-destructive">{unavailableMap[item.id]}</p>
-                      )}
+                      {/* Removed per-item availability message to avoid clutter; using top alert only */}
                       <div className="flex-1 flex justify-between gap-3">
                         {/* Left column: details and packaging */}
                         <div className="min-w-0">
@@ -192,11 +190,11 @@ export default function CartPage() {
                               checked={!!item.packaging}
                               onCheckedChange={() => togglePackaging(item.id)}
                             />
-                            <Label htmlFor={`packaging-${item.id}`} className="flex items-center text-sm">
-                              <Package className="mr-1 h-3 w-3" /> Packaging (+₹7)
+                            <Label htmlFor={`packaging-${item.id}`} className="flex items-center text-sm whitespace-nowrap">
+                              <Package className="mr-1 h-3 w-3" /> Packaging (+₹10)
                             </Label>
                             {item.packaging && (
-                              <span className="ml-2 text-xs text-muted-foreground">+₹{7 * item.quantity}</span>
+                              <span className="ml-2 text-xs text-muted-foreground">+₹{10 * item.quantity}</span>
                             )}
                           </div>
                         </div>

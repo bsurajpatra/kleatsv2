@@ -117,10 +117,10 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
 
     order.items.forEach((item) => {
       const itemTotal = item.price * item.quantity
-      const packagingCost = item.packaging ? 7 * item.quantity : 0
+  const packagingCost = item.packaging ? 10 * item.quantity : 0
       receipt += `\n${item.name} x${item.quantity} - ₹${itemTotal}`
       if (packagingCost > 0) {
-        receipt += `\n  + Packaging - ₹${packagingCost}`
+  receipt += `\n  + Packaging - ₹${packagingCost}`
       }
     })
 

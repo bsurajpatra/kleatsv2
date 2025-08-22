@@ -47,7 +47,7 @@ export default function OrderDetailsPage() {
 
   // Calculate packaging cost
   const packagingCost = order.items.reduce((total: number, item: any) => {
-    return total + (item.packaging ? 7 * item.quantity : 0)
+    return total + (item.packaging ? 10 * item.quantity : 0)
   }, 0)
 
   // Format dates
@@ -144,7 +144,7 @@ export default function OrderDetailsPage() {
                     </div>
                     <div className="text-right">
                       <p className="font-medium">₹{item.price * item.quantity}</p>
-                      {item.packaging && <p className="text-xs text-muted-foreground">+₹{7 * item.quantity}</p>}
+                      {item.packaging && <p className="text-xs text-muted-foreground">+₹{10 * item.quantity}</p>}
                     </div>
                   </div>
                 ))}
