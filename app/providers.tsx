@@ -6,7 +6,6 @@ import { CartProvider } from "@/hooks/use-cart"
 import { FavoritesProvider } from "@/hooks/use-favorites"
 import { OrdersProvider } from "@/hooks/use-orders"
 import { AuthProvider } from "@/hooks/use-auth"
-import { SubscriptionProvider } from "@/hooks/use-subscription"
 import { CanteensProvider } from "@/hooks/use-canteens"
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -15,9 +14,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <CartProvider>
         <FavoritesProvider>
           <OrdersProvider>
-            <SubscriptionProvider>
-              <CanteensProvider>{children}</CanteensProvider>
-            </SubscriptionProvider>
+            <CanteensProvider>{children}</CanteensProvider>
           </OrdersProvider>
         </FavoritesProvider>
       </CartProvider>

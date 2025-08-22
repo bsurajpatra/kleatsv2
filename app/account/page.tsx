@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTheme } from "next-themes"
 import BottomNavigation from "@/components/bottom-navigation"
-import { ArrowLeft, History, Moon, Sun, User, LogOut, Edit, Star, Package } from "lucide-react"
+import { History, Moon, Sun, User, LogOut, Edit } from "lucide-react"
 import Link from "next/link"
 import { useOrders } from "@/hooks/use-orders"
 import { Badge } from "@/components/ui/badge"
@@ -18,7 +18,6 @@ import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
-import { useSubscription } from "@/hooks/use-subscription"
 import PageHeader from "@/components/page-header"
 
 export default function AccountPage() {
@@ -27,7 +26,6 @@ export default function AccountPage() {
   const [mounted, setMounted] = useState(false)
   const { orders } = useOrders()
   const { user, logout, updateUser } = useAuth()
-  const { currentSubscription, plans, isSubscribed } = useSubscription()
   const router = useRouter()
   const [backendProfile, setBackendProfile] = useState<
     | null
@@ -157,8 +155,7 @@ export default function AccountPage() {
     return new Date(b.orderTime).getTime() - new Date(a.orderTime).getTime()
   })
 
-  // Get current subscription plan details
-  const currentPlan = currentSubscription ? plans.find((plan) => plan.id === currentSubscription.planId) : null
+  // Subscription removed
 
   if (!mounted || !user) {
     return null
@@ -190,24 +187,16 @@ export default function AccountPage() {
                   </p>
                 </div>
               )}
-              {isSubscribed && currentPlan && (
-                <Badge className="mt-2" variant="secondary">
-                  {currentPlan.name} Subscriber
-                </Badge>
-              )}
+              {/* Subscription badge removed */}
             </div>
           </CardContent>
         </Card>
 
         <Tabs defaultValue="profile" className="mb-6">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="profile">
               <User className="mr-2 h-4 w-4" />
               Profile
-            </TabsTrigger>
-            <TabsTrigger value="subscription">
-              <Star className="mr-2 h-4 w-4" />
-              Subscription
             </TabsTrigger>
             <TabsTrigger value="history">
               <History className="mr-2 h-4 w-4" />
@@ -253,70 +242,7 @@ export default function AccountPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          <TabsContent value="subscription">
-            <Card>
-              <CardHeader>
-                <CardTitle>Subscription Plans</CardTitle>
-                <CardDescription>
-                  {isSubscribed ? "Manage your current subscription" : "Subscribe to get exclusive benefits"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {isSubscribed && currentPlan ? (
-                  <div className="rounded-md border p-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-medium">{currentPlan.name}</h3>
-                      <Badge>Active</Badge>
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">{currentPlan.description}</p>
-                    <div className="mt-2">
-                      <p className="text-sm font-medium">Benefits:</p>
-                      <ul className="mt-1 list-inside list-disc text-sm text-muted-foreground">
-                        {currentPlan.features.map((feature, index) => (
-                          <li key={index}>{feature}</li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="mt-4 flex justify-between">
-                      <p className="text-sm">
-                        <span className="font-medium">₹{currentPlan.price}</span>
-                        <span className="text-muted-foreground"> / {currentPlan.duration}</span>
-                      </p>
-                      <Button variant="outline" size="sm">
-                        Cancel Subscription
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {plans.map((plan) => (
-                      <div key={plan.id} className="rounded-md border p-4">
-                        <h3 className="font-medium">{plan.name}</h3>
-                        <p className="text-sm text-muted-foreground">{plan.description}</p>
-                        <div className="mt-2">
-                          <p className="text-sm font-medium">Benefits:</p>
-                          <ul className="mt-1 list-inside list-disc text-sm text-muted-foreground">
-                            {plan.features.map((feature, index) => (
-                              <li key={index}>{feature}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="mt-4 flex justify-between items-center">
-                          <p className="text-sm">
-                            <span className="font-medium">₹{plan.price}</span>
-                            <span className="text-muted-foreground"> / {plan.duration}</span>
-                          </p>
-                          <Link href={`/subscription/${plan.id}`}>
-                            <Button size="sm">Subscribe</Button>
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* Subscription tab removed */}
           <TabsContent value="history">
             <Card>
               <CardHeader>
