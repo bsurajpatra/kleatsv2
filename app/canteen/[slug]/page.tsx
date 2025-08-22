@@ -117,6 +117,10 @@ export default function CanteenPage() {
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<string>("all")
   const [itemsAll, setItemsAll] = useState<RawItem[]>([])
+  const [itemsHasMore, setItemsHasMore] = useState<boolean>(false)
+  const [itemsNextOffset, setItemsNextOffset] = useState<number>(0)
+  const [itemsFetchingMore, setItemsFetchingMore] = useState<boolean>(false)
+  const [observerEnabled, setObserverEnabled] = useState<boolean>(true)
   const [catItemsMap, setCatItemsMap] = useState<Record<string, RawItem[]>>({})
   const [itemsLoading, setItemsLoading] = useState<boolean>(true)
   const [categoryLoading, setCategoryLoading] = useState<boolean>(false)
@@ -132,7 +136,7 @@ export default function CanteenPage() {
 
   useEffect(() => {
     let mounted = true
-    const load = async () => {
+  const load = async () => {
       setLoading(true)
       setError(null)
       try {
@@ -156,7 +160,14 @@ export default function CanteenPage() {
         if (mounted) {
           setDetails(dJson.data)
           setCategories(cJson.data)
-          setItemsAll(iJson.data.filter((it) => it.ava !== false && it.canteenId === canteenIdNum))
+          const firstPage = iJson.data.filter((it) => it.ava !== false && it.canteenId === canteenIdNum)
+          setItemsAll(firstPage)
+          // Determine hasMore using meta if provided, else infer from page length
+          const limitFromMeta = typeof iJson.meta?.limit === 'number' ? iJson.meta!.limit : 50
+          const nextOffset = (typeof iJson.meta?.offset === 'number' ? iJson.meta!.offset + (iJson.meta!.limit || 50) : firstPage.length)
+          const hasMore = typeof iJson.meta?.hasMore === 'boolean' ? iJson.meta!.hasMore : firstPage.length >= limitFromMeta
+          setItemsHasMore(hasMore)
+          setItemsNextOffset(nextOffset)
           setItemsLoading(false)
         }
       } catch (e: any) {
@@ -171,6 +182,56 @@ export default function CanteenPage() {
       mounted = false
     }
   }, [canteenId])
+
+  // Load more items for the All tab
+  const loadMoreAll = async () => {
+    if (itemsFetchingMore || !itemsHasMore) return
+    setItemsFetchingMore(true)
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || ""
+      const res = await fetch(`${base}/api/explore/items?canteen_id=${encodeURIComponent(canteenId)}&offset=${encodeURIComponent(String(itemsNextOffset))}`,
+        { cache: "no-store" })
+      if (!res.ok) throw new Error(`Items HTTP ${res.status}`)
+      const json: ItemsResponse = await res.json()
+      if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed items fetch")
+      const newBatch = json.data.filter((it) => it.ava !== false && it.canteenId === canteenIdNum)
+      // Dedupe by ItemId when appending
+      setItemsAll((prev) => {
+        const seen = new Set(prev.map((i) => i.ItemId))
+        const deduped = newBatch.filter((i) => !seen.has(i.ItemId))
+        return [...prev, ...deduped]
+      })
+      const limitFromMeta = typeof json.meta?.limit === 'number' ? json.meta!.limit : 50
+      const nextOffset = typeof json.meta?.offset === 'number' ? json.meta!.offset + (json.meta!.limit || 50) : itemsNextOffset + newBatch.length
+      const hasMore = typeof json.meta?.hasMore === 'boolean' ? json.meta!.hasMore : newBatch.length >= limitFromMeta
+      setItemsNextOffset(nextOffset)
+      setItemsHasMore(hasMore)
+    } catch (e) {
+      console.error('All tab load more failed', e)
+      // If failure, disable auto observer to avoid loops; user can tap button to retry
+      setObserverEnabled(false)
+    } finally {
+      setItemsFetchingMore(false)
+    }
+  }
+
+  // Auto-load on scroll using IntersectionObserver for All tab
+  const [sentinelEl, setSentinelEl] = useState<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!sentinelEl) return
+    if (activeTab !== 'all') return
+    if (!observerEnabled) return
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          loadMoreAll()
+        }
+      })
+    }, { rootMargin: '200px 0px' })
+    io.observe(sentinelEl)
+    return () => io.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sentinelEl, activeTab, observerEnabled, itemsNextOffset, itemsHasMore])
 
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 
@@ -510,6 +571,23 @@ export default function CanteenPage() {
                     />
                   )
                 })}
+                {activeTab === 'all' && (
+                  <div className="flex flex-col items-center gap-3 py-4">
+                    {itemsHasMore && (
+                      <button
+                        className="px-4 py-2 rounded-md border hover:bg-muted text-sm"
+                        disabled={itemsFetchingMore}
+                        onClick={() => {
+                          setObserverEnabled(false)
+                          loadMoreAll()
+                        }}
+                      >
+                        {itemsFetchingMore ? 'Loading…' : 'Load more'}
+                      </button>
+                    )}
+                    <div ref={setSentinelEl as any} aria-hidden className="h-1 w-full" />
+                  </div>
+                )}
               </div>
             ) : (
               <div className="text-center py-8">
