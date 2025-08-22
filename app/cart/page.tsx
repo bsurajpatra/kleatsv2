@@ -117,8 +117,33 @@ export default function CartPage() {
                             <h3 className="font-medium">{item.name}</h3>
                             <p className="text-sm text-muted-foreground">{item.canteen}</p>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <p className="font-medium">₹{item.price * item.quantity}</p>
+                          <p className="font-medium">₹{item.price * item.quantity}</p>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id={`packaging-${item.id}`}
+                              checked={!!item.packaging}
+                              onCheckedChange={() => togglePackaging(item.id)}
+                            />
+                            <Label htmlFor={`packaging-${item.id}`} className="flex items-center text-sm">
+                              <Package className="mr-1 h-3 w-3" /> Packaging (+₹7)
+                            </Label>
+                          </div>
+                          {item.packaging && (
+                            <span className="text-xs text-muted-foreground">+₹{7 * item.quantity}</span>
+                          )}
+                        </div>
+                        <div className="mt-4 flex justify-end">
+                          <div className="flex flex-col items-end gap-2">
+                            <Button
+                              variant="destructive"
+                              size="icon"
+                              onClick={() => removeItem(item.id)}
+                              aria-label="Remove item"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"
@@ -139,26 +164,6 @@ export default function CartPage() {
                               </Button>
                             </div>
                           </div>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <Switch
-                              id={`packaging-${item.id}`}
-                              checked={!!item.packaging}
-                              onCheckedChange={() => togglePackaging(item.id)}
-                            />
-                            <Label htmlFor={`packaging-${item.id}`} className="flex items-center text-sm">
-                              <Package className="mr-1 h-3 w-3" /> Packaging (+₹7)
-                            </Label>
-                          </div>
-                          {item.packaging && (
-                            <span className="text-xs text-muted-foreground">+₹{7 * item.quantity}</span>
-                          )}
-                        </div>
-                        <div className="mt-4 flex items-center">
-                          <Button variant="destructive" size="icon" onClick={() => removeItem(item.id)} aria-label="Remove item">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
                         </div>
                       </div>
                     </div>
