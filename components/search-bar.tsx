@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useRouter } from "next/navigation"
-import { canteenService, type MenuItem } from "@/services/canteen-service"
+// Backend-powered search; no local service needed
 import { motion, AnimatePresence } from "framer-motion"
 import Image from "next/image"
 
@@ -29,13 +29,15 @@ export default function SearchBar({
   onSearch,
 }: SearchBarProps) {
   const [query, setQuery] = useState(value)
-  const [suggestions, setSuggestions] = useState<MenuItem[]>([])
+  const [suggestions, setSuggestions] = useState<any[]>([])
   const [recentSearches, setRecentSearches] = useState<string[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
   const searchRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 
   // Popular search terms
   const popularSearches = ["Dosa", "Coffee", "Chicken Rice", "Idli", "Noodles", "Samosa", "Ice Cream", "Juice"]
@@ -54,8 +56,21 @@ export default function SearchBar({
       if (query.trim() && showSuggestions) {
         setIsLoading(true)
         try {
-          const results = await canteenService.searchMenuItems(query)
-          setSuggestions(results.slice(0, 5)) // Show top 5 suggestions
+          const url = `${baseUrl}/api/explore/search/items?q=${encodeURIComponent(query)}&available_now=true&offset=0&limit=50`
+          const res = await fetch(url, { cache: "no-store" })
+          if (!res.ok) throw new Error(`Search HTTP ${res.status}`)
+          const json = await res.json()
+          const raw = Array.isArray(json?.data) ? json.data : []
+          const mapped = raw.map((it: any) => ({
+            id: it.ItemId,
+            name: it.ItemName,
+            price: it.Price,
+            image: it.ImagePath ? `${baseUrl}${it.ImagePath.startsWith("/") ? it.ImagePath : `/${it.ImagePath}`}` : "/placeholder.svg",
+            description: it.Description,
+            canteenId: it.canteenId,
+            canteenName: `Canteen ${it.canteenId}`,
+          }))
+          setSuggestions(mapped.slice(0, 6))
         } catch (error) {
           console.error("Search error:", error)
           setSuggestions([])
@@ -108,11 +123,45 @@ export default function SearchBar({
     }
   }
 
-  const handleSuggestionClick = (item: MenuItem) => {
-    const searchQuery = item.name
-    setQuery(searchQuery)
-    onChange?.(searchQuery)
-    handleSearch(searchQuery)
+  // Backend cart helpers
+  const getToken = () =>
+    (typeof window !== "undefined" && (localStorage.getItem("auth_token") || localStorage.getItem("token"))) || null
+
+  const addBackendToCart = async (itemId: number, quantity = 1) => {
+    const token = getToken()
+    if (!token) throw new Error("Not authenticated")
+    const url = `${baseUrl}/api/user/cart/addToCart?id=${encodeURIComponent(String(itemId))}&quantity=${encodeURIComponent(String(quantity))}`
+    const res = await fetch(url, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
+    if (!res.ok) throw new Error(await res.text())
+  }
+
+  const handleAddClick = async (e: React.MouseEvent, item: any) => {
+    e.stopPropagation()
+    const { id: itemId, canteenId } = item
+    if (!itemId || !canteenId) return
+    const token = getToken()
+    if (!token) {
+      try {
+        sessionStorage.setItem("pendingAddToCart", JSON.stringify({ itemId, canteenId }))
+        const rt = typeof window !== "undefined" ? window.location.pathname + window.location.search : "/"
+        // Prefer staying on page; login returns here and Home page will handle continuation
+        window.location.href = `/login?returnTo=${encodeURIComponent(rt)}`
+      } catch {
+        window.location.href = "/login"
+      }
+      return
+    }
+    try {
+      await addBackendToCart(itemId, 1)
+      // Navigate to the canteen page
+      window.location.href = `/canteen/${canteenId}`
+    } catch (err) {
+      console.error("Add from search failed", err)
+      try {
+        sessionStorage.setItem("pendingAddToCart", JSON.stringify({ itemId, canteenId }))
+      } catch {}
+      window.location.href = "/login"
+    }
   }
 
   const handleRecentSearchClick = (search: string) => {
@@ -181,30 +230,23 @@ export default function SearchBar({
                     <div className="p-3">
                       <h4 className="text-sm font-medium text-muted-foreground mb-2">Search Results</h4>
                       <div className="space-y-2">
-                        {suggestions.map((item) => (
+                        {suggestions.map((item: any) => (
                           <motion.div
                             key={item.id}
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
-                            className="flex items-center space-x-3 p-2 rounded-md hover:bg-muted cursor-pointer"
-                            onClick={() => handleSuggestionClick(item)}
+                            className="flex items-center justify-between p-2 rounded-md hover:bg-muted"
                           >
-                            <Image
-                              src={item.image || "/placeholder.svg"}
-                              alt={item.name}
-                              width={40}
-                              height={40}
-                              className="rounded-md object-cover"
-                            />
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{item.name}</p>
-                              <div className="flex items-center space-x-2">
-                                <p className="text-xs text-muted-foreground">{item.canteenName}</p>
-                                <Badge variant="outline" className="text-xs">
-                                  ₹{item.price}
-                                </Badge>
+                              <div className="flex items-center gap-2 text-xs">
+                                <span className="text-muted-foreground truncate">{item.canteenName}</span>
+                                <Badge variant="outline" className="text-xs">₹{item.price}</Badge>
                               </div>
                             </div>
+                            <Button size="sm" className="rounded-full" onClick={(e) => handleAddClick(e, item)}>
+                              Add
+                            </Button>
                           </motion.div>
                         ))}
                       </div>

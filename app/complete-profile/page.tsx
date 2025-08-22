@@ -12,6 +12,37 @@ export default function PhoneVerificationPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+
+  // Helpers to resume an in-flight add-to-cart from sessionStorage and go straight to the canteen
+  const getToken = () =>
+    (typeof window !== "undefined" && (localStorage.getItem("auth_token") || localStorage.getItem("token"))) || null
+
+  const addBackendToCart = async (itemId: number, quantity = 1) => {
+    const token = getToken()
+    if (!token) throw new Error("Not authenticated")
+    const url = `${baseUrl}/api/user/cart/addToCart?id=${encodeURIComponent(String(itemId))}&quantity=${encodeURIComponent(String(quantity))}`
+    const res = await fetch(url, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
+    if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`))
+  }
+
+  const processPendingAdd = async (): Promise<boolean> => {
+    try {
+      const raw = sessionStorage.getItem("pendingAddToCart")
+      if (!raw) return false
+      const pending = JSON.parse(raw)
+      if (!pending?.itemId || !pending?.canteenId) return false
+      const token = getToken()
+      if (!token) return false
+      await addBackendToCart(Number(pending.itemId), 1)
+      sessionStorage.removeItem("pendingAddToCart")
+      router.push(`/canteen/${pending.canteenId}`)
+      return true
+    } catch (e) {
+      console.error("complete-profile: processPendingAdd failed", e)
+      return false
+    }
+  }
 
   useEffect(() => {
     const checkPhoneStatus = async () => {
@@ -65,8 +96,12 @@ export default function PhoneVerificationPage() {
             title: "Welcome back!",
             description: "Your account is already set up.",
           })
-          const returnTo = searchParams?.get("returnTo") || "/"
-          router.push(returnTo)
+          // If user initiated an add-to-cart before login, finish it and go straight to the canteen
+          const handled = await processPendingAdd()
+          if (!handled) {
+            const returnTo = searchParams?.get("returnTo") || "/"
+            router.push(returnTo)
+          }
         } else {
           throw new Error("Unexpected response from phone status check")
         }

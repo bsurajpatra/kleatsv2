@@ -227,8 +227,10 @@
   width: 200%;
   height: 200%;
   background: radial-gradient(circle, hsl(var(--primary) / 0.05), transparent 60%);
+  /* Default desktop/laptop animation */
   animation: rotate 20s linear infinite;
   transform-origin: center center;
+  will-change: transform;
 }
 
 .dark .hero-bg-animation::before {
@@ -241,6 +243,39 @@
   }
   to {
     transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* More pronounced motion on small screens so users can perceive it */
+@keyframes rotatePulse {
+  0% {
+    transform: translate(-50%, -50%) rotate(0deg) scale(1);
+  }
+  50% {
+    transform: translate(-50%, -50%) rotate(180deg) scale(1.06);
+  }
+  100% {
+    transform: translate(-50%, -50%) rotate(360deg) scale(1);
+  }
+}
+
+@media (max-width: 768px) {
+  .hero-bg-animation::before {
+    /* Slightly larger and higher contrast so the movement is visible on mobile */
+    width: 240%;
+    height: 240%;
+    background: radial-gradient(circle, hsl(var(--primary) / 0.12), transparent 55%);
+    animation: rotatePulse 12s linear infinite;
+  }
+  .dark .hero-bg-animation::before {
+    background: radial-gradient(circle, hsl(var(--primary) / 0.16), transparent 55%);
+  }
+}
+
+/* Respect user accessibility settings */
+@media (prefers-reduced-motion: reduce) {
+  .hero-bg-animation::before {
+    animation: none;
   }
 }
 
@@ -263,4 +298,22 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Utility: multi-line clamp (2 lines) */
+.clamp-2 {
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Utility: hide native scrollbar while allowing scroll */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
 }

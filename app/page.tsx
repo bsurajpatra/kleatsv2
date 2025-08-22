@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react"
 import BottomNavigation from "@/components/bottom-navigation"
 import LoadingScreen from "@/components/loading-screen"
-import { useCart } from "@/hooks/use-cart"
 import type { MenuItem } from "@/services/canteen-service"
 import { canteenService } from "@/services/canteen-service"
 import FoodItemCard from "@/components/food-item-card"
@@ -13,8 +12,9 @@ import Footer from "@/components/footer"
 import Logo from "@/components/logo"
 import ThemeToggle from "@/components/theme-toggle"
 import { motion } from "framer-motion"
-import { Star, Clock, Utensils, Copy, Check, ArrowRight } from "lucide-react"
+import { Star, Clock, Utensils, Copy, Check, ArrowRight, CupSoda, Receipt, Info } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import Image from "next/image"
 import Link from "next/link"
@@ -36,11 +36,9 @@ export default function Home() {
     return typeof v === "string" && /LOCK/i.test(v)
   })
   const [searchQuery, setSearchQuery] = useState("")
-  const [searchResults, setSearchResults] = useState<MenuItem[]>([])
-  const [isSearching, setIsSearching] = useState(false)
+  // SearchBar handles its own suggestions; we don't fetch results here anymore
   // No motion hooks in hero anymore for smoother, static layout
 
-  const { addItem } = useCart()
   // backend-driven state
   const [homeLoading, setHomeLoading] = useState(true)
   const [homeError, setHomeError] = useState<string | null>(null)
@@ -59,6 +57,8 @@ export default function Home() {
   const router = useRouter()
   const [copiedOffer, setCopiedOffer] = useState<number | null>(null)
   const [categoriesExpanded, setCategoriesExpanded] = useState(false)
+  // number of columns matching the grid classes below (mobile 3, sm 4, md+ 6)
+  const [categoryCols, setCategoryCols] = useState(3)
   const shuffledCategories = useMemo(() => {
     const arr = [...apiCategories]
     for (let i = arr.length - 1; i > 0; i--) {
@@ -67,6 +67,21 @@ export default function Home() {
     }
     return arr
   }, [apiCategories, categoriesExpanded])
+
+  // Track viewport width to decide how many category tiles fit in one row
+  useEffect(() => {
+    const computeCols = () => {
+      if (typeof window === "undefined") return 3
+      const w = window.innerWidth
+      if (w >= 768) return 6 // md and up
+      if (w >= 640) return 4 // sm
+      return 3 // base
+    }
+    const onResize = () => setCategoryCols(computeCols())
+    setCategoryCols(computeCols())
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
 
   // helper to check open status moved to lib/utils as isOpenNow
 
@@ -131,51 +146,15 @@ export default function Home() {
     }
   }, [])
 
-  // Handle search (placeholder: no backend search wired here)
-  useEffect(() => {
-    const performSearch = async () => {
-      if (searchQuery.trim().length > 0) {
-        setIsSearching(true)
-        try {
-    // Future: call a search endpoint. For now, show no results.
-    setSearchResults([])
-        } catch (error) {
-          console.error("Search failed:", error)
-          setSearchResults([])
-        } finally {
-          setIsSearching(false)
-        }
-      } else {
-        setSearchResults([])
-        setIsSearching(false)
-      }
-    }
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 
-    const debounceTimer = setTimeout(performSearch, 300)
-    return () => clearTimeout(debounceTimer)
-  }, [searchQuery])
 
   type DisplayItem = Pick<MenuItem, "id" | "name" | "price" | "image" | "description" | "rating" | "preparationTime"> & {
     canteen?: string
     canteenName?: string
   }
 
-  const handleAddToCart = (item: DisplayItem) => {
-    if (!isAuthenticated) {
-      router.push("/login")
-      return
-    }
-
-    addItem({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: 1,
-  canteen: item.canteen || item.canteenName || "",
-      image: item.image,
-      packaging: false,
-    })
-  }
+  // Removed legacy search and post-login continuation logic from Home; handled in SearchBar and complete-profile
 
   // Helper to copy coupon codes
   const copyCoupon = async (code: string, id: number) => {
@@ -223,7 +202,7 @@ export default function Home() {
       {/* Top Bar */}
       <div className="sticky top-0 z-20 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4 border-b">
         <div className="container mx-auto flex items-center justify-between">
-          <Logo />
+          <Logo imgClassName="h-10 w-auto md:h-11" />
           <div className="hidden md:block md:w-1/3">
             <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search for food or canteen..." />
           </div>
@@ -296,44 +275,139 @@ export default function Home() {
             </motion.div>
             <div className="md:pl-6">
               <motion.div
-                className="grid grid-cols-2 gap-3 md:gap-4"
+                className="flex gap-3 md:gap-4 overflow-x-auto no-scrollbar snap-x snap-mandatory sm:grid sm:grid-cols-2 sm:overflow-visible"
                 initial="hidden"
                 animate="visible"
                 variants={{
                   visible: {
-                    transition: {
-                      staggerChildren: 0.1,
-                      delayChildren: 0.5,
-                    },
+                    transition: { staggerChildren: 0.1, delayChildren: 0.5 },
                   },
                 }}
               >
-                {[
-                  { icon: Star, title: "Best Rated", subtitle: "Students’ favorites" },
-                  { icon: Clock, title: "Under 15 min", subtitle: "Fast pickup" },
-                  { icon: Utensils, title: "Fresh Options", subtitle: "Across canteens" },
-                  { icon: Star, title: "Exclusive Offers", subtitle: "Daily deals" },
-                ].map((item, index) => (
-                  <motion.div
-                    key={index}
-                    variants={{
-                      hidden: { opacity: 0, y: 20 },
-                      visible: { opacity: 1, y: 0 },
-                    }}
-                    className="rounded-xl border p-4 bg-card/60 backdrop-blur-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                        <item.icon className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold">{item.title}</p>
-                        <p className="text-xs text-muted-foreground">{item.subtitle}</p>
-                      </div>
+                {/* Coupon: Free Sugarcane with every meal (auto-applies) */}
+                <motion.div
+                  variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+                  className="rounded-xl border bg-card/60 backdrop-blur-sm overflow-hidden snap-start min-w-[85%] sm:min-w-0"
+                >
+                  <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-br from-accent/20 to-transparent">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                      <CupSoda className="h-5 w-5" />
                     </div>
-                  </motion.div>
-                ))}
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold leading-tight clamp-2">Free Sugarcane with every meal</p>
+                      <p className="text-[11px] text-muted-foreground clamp-2">
+                        Enter FREECANE at checkout. One complimentary sugarcane with eligible meal combos. Limited time.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="p-3 pt-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <code className="rounded bg-muted px-2.5 py-1 text-xs sm:text-sm font-mono font-bold">FREECANE</code>
+                      <button
+                        onClick={() => copyCoupon("FREECANE", 200)}
+                        className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs sm:text-sm hover:bg-secondary"
+                        aria-label="Copy coupon FREECANE"
+                      >
+                        {copiedOffer === 200 ? (<><Check className="h-4 w-4 text-green-500" />Copied</>) : (<><Copy className="h-4 w-4" />Copy</>)}
+                      </button>
+                    </div>
+                    <Dialog>
+                      <DialogTrigger className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs hover:bg-secondary">
+                        <Info className="h-3 w-3" /> Details
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>Free Sugarcane with every meal</DialogTitle>
+                          <DialogDescription>
+                            Enter <strong>FREECANE</strong> at checkout to enjoy one complimentary sugarcane juice with any eligible meal combo.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="text-sm space-y-2">
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Code must be entered before payment and qualifying items must be in cart.</li>
+                            <li>Eligible items: <span className="italic text-muted-foreground">to be provided</span>.</li>
+                            <li>One free sugarcane per order. Cannot be exchanged or transferred.</li>
+                            <li>Not valid with other “free item” promotions unless stated.</li>
+                            <li>Subject to availability. While supplies last.</li>
+                          </ul>
+                          <p className="text-xs text-muted-foreground">Full terms may be updated. Check the cart before payment.</p>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </motion.div>
+
+                {/* Coupon: GLUG – removes all service charges */}
+                <motion.div
+                  variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+                  className="rounded-xl border bg-card/60 backdrop-blur-sm overflow-hidden snap-start min-w-[85%] sm:min-w-0"
+                >
+                  <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-br from-accent/20 to-transparent">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                      <Receipt className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold leading-tight clamp-2">GLUG — zero service charges</p>
+                      <p className="text-[11px] text-muted-foreground clamp-2">Waives platform service charges at checkout. Taxes may still apply.</p>
+                    </div>
+                  </div>
+                  <div className="p-3 pt-2 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <code className="rounded bg-muted px-2.5 py-1 text-xs sm:text-sm font-mono font-bold">GLUG</code>
+                      <button
+                        onClick={() => copyCoupon("GLUG", 201)}
+                        className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs sm:text-sm hover:bg-secondary"
+                        aria-label="Copy coupon GLUG"
+                      >
+                        {copiedOffer === 201 ? (<><Check className="h-4 w-4 text-green-500" />Copied</>) : (<><Copy className="h-4 w-4" />Copy</>)}
+                      </button>
+                    </div>
+                    <Dialog>
+                      <DialogTrigger className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs hover:bg-secondary">
+                        <Info className="h-3 w-3" /> Details
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle>GLUG — Service charge waiver</DialogTitle>
+                          <DialogDescription>
+                            Enter <strong>GLUG</strong> at checkout to remove all service charges from your order total.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="text-sm space-y-2">
+                          <ul className="list-disc pl-5 space-y-1">
+                            <li>Valid for a limited time. One use per order.</li>
+                            <li>Removes platform service charges. Government taxes may still apply.</li>
+                            <li>Not applicable to delivery fees or tips (if any).</li>
+                            <li>Cannot be combined with other service-charge waivers.</li>
+                            <li>Applies only when code is entered before payment.</li>
+                          </ul>
+                          <p className="text-xs text-muted-foreground">If the waiver doesn’t reflect, re-apply the code on the payment step.</p>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </motion.div>
               </motion.div>
+              {/* Students' favorites -> scroll to Popular Items (kept as-is, outside scroller) */}
+              <Link href="#popular" className="block mt-3" aria-label="Go to Students’ favorites (Popular Items)">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: "easeOut" }}
+                  className="rounded-xl border p-4 bg-card/60 backdrop-blur-sm flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                      <Star className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">Students’ favorites</p>
+                      <p className="text-xs text-muted-foreground">Tap to view popular items</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                </motion.div>
+              </Link>
             </div>
           </div>
         </div>
@@ -345,44 +419,9 @@ export default function Home() {
           <ThemeToggle />
         </div>
 
-        {/* Search Results */}
-        {searchQuery.trim().length > 0 && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <section className="mb-8">
-              <h2 className="mb-4 text-lg font-semibold">
-                {isSearching ? (
-                  "Searching..."
-                ) : (
-                  <>
-                    Search Results for &ldquo;{searchQuery}&rdquo; ({searchResults.length})
-                  </>
-                )}
-              </h2>
-              {isSearching ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                </div>
-              ) : searchResults.length > 0 ? (
-                <div className="grid gap-4">
-                  {searchResults.map((item) => {
-                    const normalized = { ...item, canteen: (item as MenuItem & { canteen?: string }).canteen ?? item.canteenName }
-                    return (
-                      <FoodItemCard key={`search-${item.id}`} item={normalized} onAddToCart={handleAddToCart} />
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No items found matching &ldquo;{searchQuery}&rdquo;</p>
-                  <p className="text-sm text-muted-foreground mt-2">Try searching for different keywords</p>
-                </div>
-              )}
-            </section>
-          </motion.div>
-        )}
+  {/* Inline results removed; suggestions appear in the search dropdown only */}
 
-        {/* Show regular content only when not searching */}
-        {searchQuery.trim().length === 0 && (
+  {/* Always show regular content; search suggestions live in the dropdown */}
           <motion.div
             initial="hidden"
             whileInView="visible"
@@ -398,13 +437,9 @@ export default function Home() {
             >
               <h2 className="mb-4 text-xl font-bold tracking-tight">Food Categories</h2>
               {!categoriesExpanded ? (
-                <div className="flex gap-4 overflow-x-auto pb-1">
-                  {shuffledCategories.map((category) => (
-                    <Link
-                      href={`/category/${encodeURIComponent(category.name)}`}
-                      key={category.name}
-                      className="min-w-[130px] max-w-[130px]"
-                    >
+                <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
+                  {shuffledCategories.slice(0, Math.max(0, categoryCols - 1)).map((category) => (
+                    <Link href={`/category/${encodeURIComponent(category.name)}`} key={category.name}>
                       <motion.div
                         whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
                         transition={{ type: "spring", stiffness: 300 }}
@@ -430,12 +465,8 @@ export default function Home() {
                       </motion.div>
                     </Link>
                   ))}
-                  {/* View All tile */}
-                  <button
-                    onClick={() => setCategoriesExpanded(true)}
-                    className="min-w-[130px] max-w-[130px]"
-                    aria-label="View all categories"
-                  >
+                  {/* View All tile occupies the last slot */}
+                  <button onClick={() => setCategoriesExpanded(true)} aria-label="View all categories">
                     <motion.div
                       whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
                       transition={{ type: "spring", stiffness: 300 }}
@@ -495,74 +526,7 @@ export default function Home() {
               )}
             </motion.section>
 
-            <motion.section
-              className="mb-6"
-              aria-labelledby="offers-heading"
-              variants={{
-                hidden: { opacity: 0, y: 40 },
-                visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
-              }}
-            >
-              <div className="mb-3 flex items-center justify-between">
-                <h2 id="offers-heading" className="text-xl font-bold tracking-tight">Today's Offers</h2>
-              </div>
-              <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
-                {[
-                  {
-                    id: 0,
-                    title: "Combo Meal Discount",
-                    subtitle: "Limited time • Campus pickup",
-                    image: "/hero/bowl.svg",
-                    coupon: "KLE10",
-                  },
-                  {
-                    id: 1,
-                    title: "Fresh & Healthy Deal",
-                    subtitle: "Limited time • Campus pickup",
-                    image: "/hero/leaf.svg",
-                    coupon: "FRESH15",
-                  },
-                ].map((offer, idx) => (
-                  <motion.div key={`offer-${offer.id}`} whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.05)" }} transition={{ type: "spring", stiffness: 300 }}>
-                    <Card className="overflow-hidden h-full flex flex-col">
-                      <CardContent className="p-0 flex-grow">
-                        <div className="relative h-28">
-                          <Image src={offer.image} alt={offer.title} fill className="object-contain p-4 bg-gradient-to-br from-accent/20 to-transparent" />
-                          <Badge className="absolute left-2 top-2 text-[10px] px-1.5 py-0.5 border-primary/50 bg-primary/10 text-primary">{idx === 0 ? "Main Canteen" : "North Canteen"}</Badge>
-                        </div>
-                        <div className="p-3 space-y-2 flex-grow flex flex-col justify-between">
-                          <div>
-                            <p className="font-semibold leading-tight">{offer.title}</p>
-                            <p className="text-xs text-muted-foreground leading-tight mt-1">{offer.subtitle}</p>
-                          </div>
-                          <div className="flex items-center justify-between gap-2 pt-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs uppercase tracking-wide text-muted-foreground">Code:</span>
-                              <code className="rounded bg-muted px-2 py-1 text-xs font-mono font-bold">{offer.coupon}</code>
-                            </div>
-                            <button
-                              onClick={() => copyCoupon(offer.coupon, offer.id)}
-                              className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs hover:bg-secondary transition-colors"
-                              aria-label={`Copy coupon ${offer.coupon}`}
-                            >
-                              {copiedOffer === offer.id ? (
-                                <>
-                                  <Check className="h-3.5 w-3.5 text-green-500" /> Copied
-                                </>
-                              ) : (
-                                <>
-                                  <Copy className="h-3.5 w-3.5" /> Copy
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </motion.section>
+            {/* Today's Offers section removed as offers are now highlighted in the hero */}
 
             <motion.section
               className="mb-8 scroll-mt-16 md:scroll-mt-20"
@@ -678,7 +642,7 @@ export default function Home() {
               </div>
             </motion.section>
           </motion.div>
-        )}
+        
       </div>
 
       <Footer />

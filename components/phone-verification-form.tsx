@@ -116,7 +116,7 @@ export default function PhoneVerificationForm() {
       const data = await response.json()
       console.log("Profile update success:", data)
       
-      // Show success message
+  // Show success message
       toast({
         title: "Success",
         description: "Your information has been saved successfully!",
@@ -128,9 +128,33 @@ export default function PhoneVerificationForm() {
         // We could update other user properties here if needed
       })
       
-  // Redirect back to original page if provided
-  const returnTo = searchParams?.get("returnTo") || "/"
-  router.push(returnTo)
+      // If there was a pending add-to-cart before login, complete it now and go straight to the canteen
+      try {
+        const raw = sessionStorage.getItem("pendingAddToCart")
+        if (raw) {
+          const pending = JSON.parse(raw)
+          const itemId = Number(pending?.itemId)
+          const canteenId = pending?.canteenId
+          if (itemId && canteenId) {
+            const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+            const addUrl = `${baseUrl}/api/user/cart/addToCart?id=${encodeURIComponent(String(itemId))}&quantity=1`
+            const resp = await fetch(addUrl, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
+            if (resp.ok) {
+              sessionStorage.removeItem("pendingAddToCart")
+              router.push(`/canteen/${canteenId}`)
+              return
+            } else {
+              console.error("Pending addToCart after verification failed", await resp.text().catch(() => ""))
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Error handling pending add after verification", e)
+      }
+      
+      // Otherwise, redirect back to original page if provided
+      const returnTo = searchParams?.get("returnTo") || "/"
+      router.push(returnTo)
       
     } catch (error: any) {
       toast({

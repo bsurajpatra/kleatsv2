@@ -270,9 +270,6 @@ export default function LoginPage() {
             </Button>
             <div className="flex justify-between">
               <p className="text-xs text-muted-foreground">We never store your password.</p>
-              <Button asChild variant="ghost" size="sm" className="text-xs text-muted-foreground">
-                <Link href="/login-select">Login options</Link>
-              </Button>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col">

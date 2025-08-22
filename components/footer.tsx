@@ -10,7 +10,7 @@ export default function Footer() {
       <div className="container px-4 py-6">
         <div className="grid gap-6 md:grid-cols-3">
           <div className="md:col-span-1">
-            <Logo className="mb-2" />
+            <Logo className="mb-2" imgClassName="h-12 w-auto md:h-14" />
             <p className="text-xs text-muted-foreground">
               Pre-order your favorite campus food and skip the lines.
             </p>
