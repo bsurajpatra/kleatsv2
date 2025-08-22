@@ -410,10 +410,6 @@ export default function PaymentPage() {
                     <span>Gateway Charge (3%)</span>
                     <span>₹{gatewayCharge}</span>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span>Tip</span>
-                    <span>₹{tipAmount}</span>
-                  </div>
                   <Separator className="my-2" />
                   <div className="flex items-center justify-between font-medium">
                     <span>Total</span>
