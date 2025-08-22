@@ -117,7 +117,28 @@ export default function CartPage() {
                             <h3 className="font-medium">{item.name}</h3>
                             <p className="text-sm text-muted-foreground">{item.canteen}</p>
                           </div>
-                          <p className="font-medium">₹{item.price * item.quantity}</p>
+                          <div className="flex items-center gap-3">
+                            <p className="font-medium">₹{item.price * item.quantity}</p>
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-6 text-center">{item.quantity}</span>
+                              <Button
+                                variant="outline"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
                         </div>
                         <div className="mt-2 flex items-center justify-between">
                           <div className="flex items-center space-x-2">
@@ -134,31 +155,10 @@ export default function CartPage() {
                             <span className="text-xs text-muted-foreground">+₹{7 * item.quantity}</span>
                           )}
                         </div>
-                        <div className="mt-4 flex items-center justify-between">
+                        <div className="mt-4 flex items-center">
                           <Button variant="destructive" size="icon" onClick={() => removeItem(item.id)} aria-label="Remove item">
                             <Trash2 className="h-4 w-4" />
                           </Button>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                              aria-label="Decrease quantity"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </Button>
-                            <span className="w-8 text-center text-base font-medium">{item.quantity}</span>
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              className="h-8 w-8"
-                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              aria-label="Increase quantity"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </Button>
-                          </div>
                         </div>
                       </div>
                     </div>
