@@ -9,6 +9,7 @@ import { ArrowLeft, Minus, Plus, ShoppingBag, Trash2, Clock, Package } from "luc
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useCart } from "@/hooks/use-cart"
 import { useToast } from "@/hooks/use-toast"
 import { Label } from "@/components/ui/label"
@@ -26,6 +27,8 @@ export default function CartPage() {
   const [selectedSlot, setSelectedSlot] = useState<string>("")
   const [customMinutes, setCustomMinutes] = useState<number>(20)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [unavailableMap, setUnavailableMap] = useState<Record<number, string>>({})
+  const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 
   // Redirect to login only after auth state is initialized, and preserve return URL
   useEffect(() => {
@@ -39,6 +42,14 @@ export default function CartPage() {
 
   const handleCheckout = () => {
     if (items.length === 0) return
+    if (Object.keys(unavailableMap).length > 0) {
+      toast({
+        title: "Some items are unavailable",
+        description: "Please remove unavailable items or try again during their available time window.",
+        variant: "destructive",
+      })
+      return
+    }
 
     // Navigate to payment page with selected time so user doesn't re-enter
     const mode = pickupMode
@@ -79,6 +90,38 @@ export default function CartPage() {
     return `${hh}:${mm} ${ampm}`
   }
 
+  // Check availability for each item and surface messages from backend
+  useEffect(() => {
+    let cancelled = false
+    const check = async () => {
+      const entries: [number, string][] = []
+      await Promise.all(
+        items.map(async (it) => {
+          try {
+            const res = await fetch(`${baseUrl}/api/explore/item?item_id=${encodeURIComponent(String(it.id))}`, { cache: "no-store" })
+            const json = await res.json().catch(() => ({} as any))
+            const code = typeof json?.code === "number" ? json.code : 1
+            if (code !== 1) {
+              const msg = (json?.message as string) || "Item unavailable at this time."
+              entries.push([it.id, msg])
+            }
+          } catch {
+            // Ignore network errors; assume available
+          }
+        }),
+      )
+      if (cancelled) return
+      const map: Record<number, string> = {}
+      for (const [id, msg] of entries) map[id] = msg
+      setUnavailableMap(map)
+    }
+    if (items.length > 0) check()
+    else setUnavailableMap({})
+    return () => {
+      cancelled = true
+    }
+  }, [items, baseUrl])
+
   // Calculate packaging cost
   const packagingCost = items.reduce((total, item) => {
     return total + (item.packaging ? 7 * item.quantity : 0)
@@ -106,6 +149,25 @@ export default function CartPage() {
       <div className="container px-4 py-6">
         {items.length > 0 ? (
           <>
+            {Object.keys(unavailableMap).length > 0 && (
+              <div className="mb-4">
+                <Alert variant="destructive">
+                  <AlertTitle>Some items aren’t available right now</AlertTitle>
+                  <AlertDescription>
+                    {(() => {
+                      const ids = Object.keys(unavailableMap)
+                      const labels = items
+                        .filter((it) => ids.includes(String(it.id)))
+                        .map((it) => `${it.name}: ${unavailableMap[it.id]}`)
+                      const preview = labels.slice(0, 2).join("; ")
+                      const more = labels.length > 2 ? ` and ${labels.length - 2} more…` : ""
+                      return preview + more
+                    })()}
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
             <div className="mb-6">
               {items.map((item) => (
                 <Card key={item.id} className="mb-4">
@@ -115,6 +177,9 @@ export default function CartPage() {
                         <div className="relative h-16 w-16 overflow-hidden rounded-md">
                           <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
                         </div>
+                      )}
+                      {unavailableMap[item.id] && (
+                        <p className="mt-2 text-xs text-destructive">{unavailableMap[item.id]}</p>
                       )}
                       <div className="flex-1 flex justify-between gap-3">
                         {/* Left column: details and packaging */}
