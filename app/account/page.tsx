@@ -8,11 +8,11 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useTheme } from "next-themes"
 import BottomNavigation from "@/components/bottom-navigation"
-import { History, Moon, Sun, User, LogOut, Edit } from "lucide-react"
-import Link from "next/link"
-import { useOrders } from "@/hooks/use-orders"
-import { Badge } from "@/components/ui/badge"
-import { format } from "date-fns"
+import { Moon, Sun, User, LogOut, Edit } from "lucide-react"
+// import Link from "next/link" // removed with history
+// import { useOrders } from "@/hooks/use-orders" // removed with history
+// import { Badge } from "@/components/ui/badge" // removed with history
+// import { format } from "date-fns" // removed with history
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
@@ -24,7 +24,6 @@ export default function AccountPage() {
   const { theme, setTheme } = useTheme()
   const [isDarkMode, setIsDarkMode] = useState(false)
   const [mounted, setMounted] = useState(false)
-  const { orders } = useOrders()
   const { user, logout, updateUser } = useAuth()
   const router = useRouter()
   const [backendProfile, setBackendProfile] = useState<
@@ -150,10 +149,7 @@ export default function AccountPage() {
     }
   }
 
-  // Sort orders by date (newest first)
-  const sortedOrders = [...orders].sort((a, b) => {
-    return new Date(b.orderTime).getTime() - new Date(a.orderTime).getTime()
-  })
+  // History removed
 
   // Subscription removed
 
@@ -193,14 +189,10 @@ export default function AccountPage() {
         </Card>
 
         <Tabs defaultValue="profile" className="mb-6">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-1">
             <TabsTrigger value="profile">
               <User className="mr-2 h-4 w-4" />
               Profile
-            </TabsTrigger>
-            <TabsTrigger value="history">
-              <History className="mr-2 h-4 w-4" />
-              History
             </TabsTrigger>
           </TabsList>
           <TabsContent value="profile">
@@ -242,65 +234,7 @@ export default function AccountPage() {
               </CardContent>
             </Card>
           </TabsContent>
-          {/* Subscription tab removed */}
-          <TabsContent value="history">
-            <Card>
-              <CardHeader>
-                <CardTitle>Order History</CardTitle>
-                <CardDescription>View your past orders and transactions</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {sortedOrders.length > 0 ? (
-                  <div className="space-y-4">
-                    {sortedOrders.map((order) => (
-                      <div key={order.id} className="rounded-md border p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">Order #{order.id}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {format(new Date(order.orderTime), "MMM d, yyyy 'at' h:mm a")}
-                            </p>
-                          </div>
-                          <Badge
-                            variant={
-                              order.status === "Completed"
-                                ? "default"
-                                : order.status === "Cancelled"
-                                  ? "destructive"
-                                  : "secondary"
-                            }
-                          >
-                            {order.status}
-                          </Badge>
-                        </div>
-                        <div className="mt-2">
-                          <p className="text-sm">{order.canteen}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {order.items.map((item) => `${item.name} (x${item.quantity})`).join(", ")}
-                          </p>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <p className="text-sm font-medium">₹{order.totalAmount}</p>
-                          <p className="text-xs text-muted-foreground">Paid via {order.paymentMethod}</p>
-                        </div>
-                        <div className="mt-3 flex justify-end">
-                          <Link href={`/order/${order.id}`}>
-                            <Button variant="ghost" size="sm">
-                              View Details
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-md border p-4 text-center">
-                    <p className="text-sm text-muted-foreground">No order history yet.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+          {/* History removed */}
         </Tabs>
       </div>
 
