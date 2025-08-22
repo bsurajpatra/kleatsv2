@@ -172,6 +172,28 @@ export default function CartPage() {
               ))}
             </div>
 
+            {/* Add more items panel */}
+            <div className="mb-6">
+              <Card>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium">Want to add more items?</h3>
+                    <p className="text-sm text-muted-foreground">Go back to the canteen menu to keep shopping.</p>
+                  </div>
+                  <Link
+                    href={
+                      (typeof window !== "undefined" &&
+                        (localStorage.getItem("last_canteen_id")
+                          ? `/canteen/${localStorage.getItem("last_canteen_id")}`
+                          : "/canteens")) || "/canteens"
+                    }
+                  >
+                    <Button className="whitespace-nowrap">Add more items</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </div>
+
             <Card className="mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">

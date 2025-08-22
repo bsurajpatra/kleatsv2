@@ -135,6 +135,28 @@ export default function SearchBar({
     if (!res.ok) throw new Error(await res.text())
   }
 
+  const clearBackendCart = async () => {
+    const token = getToken()
+    if (!token) return
+    await fetch(`${baseUrl}/api/user/cart/clearCart`, { method: "DELETE", headers: { Authorization: token } })
+  }
+
+  const getBackendCartMeta = async (): Promise<{ hasItems: boolean; canteenId?: number } | null> => {
+    const token = getToken()
+    if (!token) return null
+    try {
+      const res = await fetch(`${baseUrl}/api/user/cart/getCartItems`, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
+      if (!res.ok) return null
+      const data = await res.json().catch(() => ({}))
+      const arr: any[] = Array.isArray(data?.data?.cart) ? data.data.cart : []
+      const cid = Number(data?.data?.canteenId)
+      const hasItems = arr.length > 0
+      return { hasItems, canteenId: Number.isNaN(cid) ? undefined : cid }
+    } catch {
+      return null
+    }
+  }
+
   const handleAddClick = async (e: React.MouseEvent, item: any) => {
     e.stopPropagation()
     const { id: itemId, canteenId } = item
@@ -152,7 +174,17 @@ export default function SearchBar({
       return
     }
     try {
+      // Enforce single-canteen rule when already logged in
+      const meta = await getBackendCartMeta()
+      const targetCidNum = Number(canteenId)
+      const cartCidNum = Number(meta?.canteenId)
+      if (meta?.hasItems && !Number.isNaN(cartCidNum) && !Number.isNaN(targetCidNum) && cartCidNum !== targetCidNum) {
+        const proceed = window.confirm("Your cart has items from another canteen. Clear cart and add this item?")
+        if (!proceed) return
+        try { await clearBackendCart() } catch {}
+      }
       await addBackendToCart(itemId, 1)
+      try { if (typeof window !== 'undefined') localStorage.setItem('last_canteen_id', String(canteenId)) } catch {}
       // Navigate to the canteen page
       window.location.href = `/canteen/${canteenId}`
     } catch (err) {
