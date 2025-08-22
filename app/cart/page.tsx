@@ -105,22 +105,18 @@ export default function CartPage() {
               {items.map((item) => (
                 <Card key={item.id} className="mb-4">
                   <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-start gap-3">
                       {item.image && (
                         <div className="relative h-16 w-16 overflow-hidden rounded-md">
                           <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
                         </div>
                       )}
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h3 className="font-medium">{item.name}</h3>
-                            <p className="text-sm text-muted-foreground">{item.canteen}</p>
-                          </div>
-                          <p className="font-medium">₹{item.price * item.quantity}</p>
-                        </div>
-                        <div className="mt-2 flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
+                      <div className="flex-1 flex justify-between gap-3">
+                        {/* Left column: details and packaging */}
+                        <div className="min-w-0">
+                          <h3 className="font-medium leading-tight truncate">{item.name}</h3>
+                          <p className="text-sm text-muted-foreground truncate">{item.canteen}</p>
+                          <div className="mt-2 flex items-center gap-2">
                             <Switch
                               id={`packaging-${item.id}`}
                               checked={!!item.packaging}
@@ -129,40 +125,44 @@ export default function CartPage() {
                             <Label htmlFor={`packaging-${item.id}`} className="flex items-center text-sm">
                               <Package className="mr-1 h-3 w-3" /> Packaging (+₹7)
                             </Label>
+                            {item.packaging && (
+                              <span className="ml-2 text-xs text-muted-foreground">+₹{7 * item.quantity}</span>
+                            )}
                           </div>
-                          {item.packaging && (
-                            <span className="text-xs text-muted-foreground">+₹{7 * item.quantity}</span>
-                          )}
                         </div>
-                        <div className="mt-4 flex justify-end">
-                          <div className="flex flex-col items-end gap-2">
+
+                        {/* Right column: price, delete, quantity */}
+                        <div className="flex shrink-0 flex-col items-end gap-2">
+                          <p className="font-medium">₹{item.price * item.quantity}</p>
+                          <Button
+                            variant="destructive"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => removeItem(item.id)}
+                            aria-label="Remove item"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                          <div className="flex items-center gap-2">
                             <Button
-                              variant="destructive"
+                              variant="outline"
                               size="icon"
-                              onClick={() => removeItem(item.id)}
-                              aria-label="Remove item"
+                              className="h-8 w-8"
+                              onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                              aria-label="Decrease quantity"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Minus className="h-3 w-3" />
                             </Button>
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="w-6 text-center">{item.quantity}</span>
-                              <Button
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                            </div>
+                            <span className="w-6 text-center">{item.quantity}</span>
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              aria-label="Increase quantity"
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
                           </div>
                         </div>
                       </div>
