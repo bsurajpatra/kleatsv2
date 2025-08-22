@@ -144,17 +144,19 @@ export default function CartPage() {
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => updateQuantity(item.id, Math.max(1, item.quantity - 1))}
+                              aria-label="Decrease quantity"
                             >
-                              <Minus className="h-3 w-3" />
+                              <Minus className="h-4 w-4" />
                             </Button>
-                            <span className="w-6 text-center">{item.quantity}</span>
+                            <span className="w-8 text-center text-base font-medium">{item.quantity}</span>
                             <Button
                               variant="outline"
                               size="icon"
                               className="h-8 w-8"
                               onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                              aria-label="Increase quantity"
                             >
-                              <Plus className="h-3 w-3" />
+                              <Plus className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
