@@ -6,6 +6,16 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  async rewrites() {
+    return {
+      beforeFiles: [
+        // Ensure webhook POSTs to /telegram/ are served by the API route at /telegram without redirects
+        { source: "/telegram/", destination: "/telegram" },
+      ],
+      afterFiles: [],
+      fallback: [],
+    }
+  },
   images: {
     unoptimized: true,
     remotePatterns: [
