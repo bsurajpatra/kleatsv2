@@ -1,6 +1,6 @@
 "use client"
 import Logo from "./logo"
-import { Instagram, Github, Send } from "lucide-react"
+import { Instagram, Github, Send, Linkedin } from "lucide-react"
 import Link from 'next/link';
 import { useEffect, useState } from "react";
 
@@ -68,7 +68,7 @@ export default function Footer() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-6 text-sm">
+          <div className="grid grid-cols-3 gap-6 text-sm">
             <div>
               <h3 className="mb-2 font-medium">Quick Links</h3>
               <ul className="space-y-1.5">
@@ -87,26 +87,32 @@ export default function Footer() {
                 <li><Link href="/contact" className="text-muted-foreground hover:text-primary">Contact</Link></li>
               </ul>
             </div>
+            <div>
+              <h3 className="mb-2 font-medium">For Teams</h3>
+              <ul className="space-y-1.5">
+                <li><a href="https://adminkleats.vercel.app/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">Admin Portal</a></li>
+                <li><a href="https://finance.kleats.in/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">Finance Portal</a></li>
+              </ul>
+            </div>
           </div>
           
-          <div className="md:text-right">
+          <div className="md:text-left">
             <h3 className="mb-2 text-sm font-medium">Follow Us</h3>
-            <div className="flex space-x-3 md:justify-end">
+            <div className="flex space-x-3 md:justify-start">
               <a href="https://t.me/+X0n_azyktiVmMzI0" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary"><Send className="h-5 w-5" /><span className="sr-only">Telegram</span></a>
               <a href="https://www.instagram.com/kleats.official?igsh=MTZna3N0Y3U1bmRudA==" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary"><Instagram className="h-5 w-5" /><span className="sr-only">Instagram</span></a>
               <a href="https://github.com/KLEats/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary"><Github className="h-5 w-5" /><span className="sr-only">GitHub</span></a>
+              <a href="https://www.linkedin.com/company/kleats/" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary"><Linkedin className="h-5 w-5" /><span className="sr-only">LinkedIn</span></a>
             </div>
           </div>
         </div>
 
-        {/* Bottom rotating message + copyright */}
         <div className="mt-6 border-t pt-4 text-center text-xs text-muted-foreground space-y-2">
           {/* Rotating funny message */}
           <p className={`transition-opacity duration-700 ease-in-out ${isFading ? 'opacity-0' : 'opacity-100'}`}>
             {footerMessages[currentIndex]}
           </p>
 
-          {/* Fixed copyright */}
           <p>
              🄯 {new Date().getFullYear()} KL Eats (A Unit of Equitech Labs Pvt. Ltd.). All rights reversed.
           </p>
