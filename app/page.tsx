@@ -385,14 +385,14 @@ export default function Home() {
                         <DialogHeader>
                           <DialogTitle>Free Sugarcane with every meal</DialogTitle>
                           <DialogDescription>
-                            Enter <strong>FREECANE</strong> at checkout to enjoy one complimentary sugarcane juice with any eligible meal combo.
+                            Enter <strong>FREECANE</strong> at checkout to enjoy one complimentary sugarcane juice with every eligible item.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="text-sm space-y-2">
                           <ul className="list-disc pl-5 space-y-1">
                             <li>Code must be entered before payment and qualifying items must be in cart.</li>
-                            <li>Eligible items: <span className="italic text-muted-foreground">to be provided</span>.</li>
-                            <li>One free sugarcane per order. Cannot be exchanged or transferred.</li>
+                            <li>Eligible items: Starters(veg & Non-Veg), Fried Rice, Pizza, Burger</li>
+                            <li>One free sugarcane per item. Cannot be exchanged or transferred.</li>
                             <li>Not valid with other “free item” promotions unless stated.</li>
                             <li>Subject to availability. While supplies last.</li>
                           </ul>
@@ -445,10 +445,10 @@ export default function Home() {
                         </DialogHeader>
                         <div className="text-sm space-y-2">
                           <ul className="list-disc pl-5 space-y-1">
-                            <li>Valid for a limited time. One use per order.</li>
+                            <li>Valid for a limited time.</li>
                             <li>Removes platform service charges. Government taxes may still apply.</li>
-                            <li>Not applicable to delivery fees or tips (if any).</li>
-                            <li>Cannot be combined with other service-charge waivers.</li>
+                            <li>Not applicable to Parcel charges or tips (if any).</li>
+                            <li>Can be combined with other service-charge waivers.</li>
                             <li>Applies only when code is entered before payment.</li>
                           </ul>
                           <p className="text-xs text-muted-foreground">If the waiver doesn’t reflect, re-apply the code on the payment step.</p>
