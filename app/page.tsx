@@ -374,8 +374,12 @@ export default function Home() {
                       </button>
                     </div>
                     <Dialog>
-                      <DialogTrigger className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs hover:bg-secondary">
-                        <Info className="h-3 w-3" /> Details
+                      <DialogTrigger
+                        className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs hover:bg-secondary"
+                        aria-label="View details"
+                      >
+                        <Info className="h-3 w-3" />
+                        <span className="hidden md:inline">Details</span>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>
@@ -425,8 +429,12 @@ export default function Home() {
                       </button>
                     </div>
                     <Dialog>
-                      <DialogTrigger className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs hover:bg-secondary">
-                        <Info className="h-3 w-3" /> Details
+                      <DialogTrigger
+                        className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs hover:bg-secondary"
+                        aria-label="View details"
+                      >
+                        <Info className="h-3 w-3" />
+                        <span className="hidden md:inline">Details</span>
                       </DialogTrigger>
                       <DialogContent className="sm:max-w-md">
                         <DialogHeader>
