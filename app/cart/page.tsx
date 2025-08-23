@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useCart } from "@/hooks/use-cart"
 import { useToast } from "@/hooks/use-toast"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
@@ -30,6 +31,10 @@ export default function CartPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [unavailableMap, setUnavailableMap] = useState<Record<number, string>>({})
   const [appliedCoupons, setAppliedCoupons] = useState<string[]>([])
+  const [availableCoupons, setAvailableCoupons] = useState<string[]>(["FREECANE", "GLUG"])
+  const [couponInput, setCouponInput] = useState("")
+  const [isFetchingCoupons, setIsFetchingCoupons] = useState(false)
+  const [flashCoupon, setFlashCoupon] = useState<string | null>(null)
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 
   // Redirect to login only after auth state is initialized, and preserve return URL
@@ -138,7 +143,55 @@ export default function CartPage() {
     : 0
 
   const toggleCoupon = (code: "GLUG" | "FREECANE") => {
-    setAppliedCoupons((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]))
+    setAppliedCoupons((prev) => {
+      const next = prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
+      if (!prev.includes(code)) {
+        setFlashCoupon(code)
+        setTimeout(() => setFlashCoupon(null), 900)
+      }
+      return next
+    })
+  }
+
+  const applyCouponFromInput = () => {
+    const code = couponInput.trim().toUpperCase()
+    if (!code) return
+    if (code !== "GLUG" && code !== "FREECANE") {
+      toast({ title: "Invalid coupon", description: "This code isn’t supported.", variant: "destructive" })
+      return
+    }
+    if (appliedCoupons.includes(code)) {
+      toast({ title: "Already applied", description: `${code} is already in use.` })
+      return
+    }
+    toggleCoupon(code as "GLUG" | "FREECANE")
+    setCouponInput("")
+    toast({ title: "Coupon applied", description: `${code} added to your order.` })
+  }
+
+  const getToken = () =>
+    (typeof window !== "undefined" && (localStorage.getItem("auth_token") || localStorage.getItem("token"))) || null
+
+  const fetchAvailableCoupons = async () => {
+    setIsFetchingCoupons(true)
+    try {
+      const token = getToken()
+      if (baseUrl) {
+        const res = await fetch(`${baseUrl}/api/user/coupons/available`, {
+          headers: token ? { Authorization: token } : undefined,
+          cache: "no-store",
+        })
+        if (res.ok) {
+          const data = await res.json().catch(() => ([] as string[]))
+          const list: string[] = Array.isArray(data) ? data : Array.isArray((data as any)?.codes) ? (data as any).codes : []
+          const normalized = list.map((c) => String(c).toUpperCase()).filter((c) => c === "GLUG" || c === "FREECANE")
+          if (normalized.length) setAvailableCoupons(Array.from(new Set(normalized)))
+        }
+      }
+    } catch {}
+    finally {
+      setIsFetchingCoupons(false)
+    }
   }
 
   return (
@@ -285,26 +338,64 @@ export default function CartPage() {
               <CardHeader>
                 <CardTitle>Coupons</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
+                {/* Entry row */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Enter coupon code"
+                    value={couponInput}
+                    onChange={(e) => setCouponInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") applyCouponFromInput()
+                    }}
+                  />
+                  <Button onClick={applyCouponFromInput} className="whitespace-nowrap">Apply</Button>
+                  <Button variant="outline" onClick={fetchAvailableCoupons} disabled={isFetchingCoupons} className="whitespace-nowrap">
+                    {isFetchingCoupons ? "Loading…" : "Fetch"}
+                  </Button>
+                </div>
+
+                {/* Available chips */}
                 <div className="flex flex-wrap gap-2">
-                  <motion.button
-                    className={`rounded-full px-3 py-1.5 text-sm border ${appliedCoupons.includes("FREECANE") ? "bg-primary text-primary-foreground border-transparent" : "bg-background hover:bg-muted border-input"}`}
-                    onClick={() => toggleCoupon("FREECANE")}
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <span className="inline-flex items-center">
-                      <Gift className="mr-1 h-4 w-4" /> FREECANE
-                    </span>
-                  </motion.button>
-                  <motion.button
-                    className={`rounded-full px-3 py-1.5 text-sm border ${appliedCoupons.includes("GLUG") ? "bg-primary text-primary-foreground border-transparent" : "bg-background hover:bg-muted border-input"}`}
-                    onClick={() => toggleCoupon("GLUG")}
-                    whileHover={{ scale: 1.04 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <span className="inline-flex items-center">GLUG</span>
-                  </motion.button>
+                  <AnimatePresence>
+                    {availableCoupons.map((code, idx) => {
+                      const active = appliedCoupons.includes(code)
+                      return (
+                        <motion.div
+                          key={code}
+                          initial={{ opacity: 0, y: 6 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -6 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="relative"
+                        >
+                          <motion.button
+                            className={`relative rounded-full px-3 py-1.5 text-sm border ${active ? "bg-primary text-primary-foreground border-transparent" : "bg-background hover:bg-muted border-input"}`}
+                            onClick={() => toggleCoupon(code as "GLUG" | "FREECANE")}
+                            whileHover={{ scale: 1.04 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <span className="inline-flex items-center">
+                              {code === "FREECANE" ? <Gift className="mr-1 h-4 w-4" /> : null}
+                              {code}
+                            </span>
+                            <AnimatePresence>
+                              {flashCoupon === code && (
+                                <motion.span
+                                  key="ring"
+                                  className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-primary"
+                                  initial={{ opacity: 0, scale: 0.9 }}
+                                  animate={{ opacity: 0.6, scale: 1.06 }}
+                                  exit={{ opacity: 0 }}
+                                  transition={{ duration: 0.6 }}
+                                />
+                              )}
+                            </AnimatePresence>
+                          </motion.button>
+                        </motion.div>
+                      )
+                    })}
+                  </AnimatePresence>
                 </div>
                 <p className="text-xs text-muted-foreground">
                   GLUG waives the Gateway Charge. FREECANE adds a free Sugarcane juice for each item in your cart.
@@ -404,10 +495,14 @@ export default function CartPage() {
                     <span>₹0</span>
                   </div>
                 )}
-                <div className="flex items-center justify-between">
+                <motion.div
+                  className="flex items-center justify-between"
+                  animate={flashCoupon === "GLUG" ? { scale: [1, 1.03, 1] } : {}}
+                  transition={{ duration: 0.4 }}
+                >
                   <span>Gateway Charge (3%){appliedCoupons.includes("GLUG") ? " — waived by GLUG" : ""}</span>
                   <span>₹{effectiveGateway}</span>
-                </div>
+                </motion.div>
                 <Separator className="my-2" />
                 <div className="flex items-center justify-between font-medium">
                   <span>Total</span>
