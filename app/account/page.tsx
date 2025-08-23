@@ -170,11 +170,9 @@ export default function AccountPage() {
             <div className="flex-1">
               <div className="flex items-center justify-between">
                 <h2 className="text-xl font-bold">{backendProfile?.name || user.name}</h2>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsEditProfileOpen(true)}>
-                  <Edit className="h-4 w-4" />
-                </Button>
+               
               </div>
-              <p className="text-sm text-muted-foreground">ID: {user.studentId}</p>
+        
               {backendProfile && (
                 <div className="mt-1 space-y-0.5 text-sm text-muted-foreground">
                   <p>Phone: {backendProfile.phoneNo}</p>
