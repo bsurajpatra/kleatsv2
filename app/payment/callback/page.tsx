@@ -79,6 +79,11 @@ export default function PaymentCallbackPage() {
       clearInterval(interval)
       setProgress(100)
 
+      // Clear cart from localStorage after payment is verified
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("cart")
+      }
+
       toast({
         title: ok === false ? "Payment not confirmed yet" : "Payment verified",
         description:
