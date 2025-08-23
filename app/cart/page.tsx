@@ -21,7 +21,7 @@ import { Slider } from "@/components/ui/slider"
 import { motion, AnimatePresence } from "framer-motion"
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, togglePackaging, setPackagingAll, totalPrice, clearCart, canClearCart } = useCart()
+  const { items, removeItem, updateQuantity, setPackagingAll, totalPrice, clearCart, canClearCart } = useCart()
   const { toast } = useToast()
   const { isAuthenticated, isInitialized } = useAuth()
   const router = useRouter()
@@ -129,10 +129,9 @@ export default function CartPage() {
     }
   }, [items, baseUrl])
 
-  // Calculate packaging cost
-  const packagingCost = items.reduce((total, item) => {
-    return total + (item.packaging ? 10 * item.quantity : 0)
-  }, 0)
+  // Calculate packaging cost and a derived top-level toggle state
+  const packagingCost = items.reduce((total, item) => total + (item.packaging ? 10 * item.quantity : 0), 0)
+  const allPackagingOn = items.length > 0 && items.every((i) => !!i.packaging)
 
   // Gateway charge: ceil of 3% of the total (including packaging)
   const gatewayCharge = Math.ceil(totalPrice * 0.03)
@@ -258,27 +257,26 @@ export default function CartPage() {
               </motion.div>
             )}
 
-            {/* Order type (global packaging) */}
-            <Card className="mb-6">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-sm text-muted-foreground">Order type</p>
-                    <p className="font-medium">{items.some((i) => !!i.packaging) ? "Pickup (with packaging)" : "Dine-in"}</p>
+            {/* Global packaging toggle */}
+            <div className="mb-4">
+              <Card>
+                <CardContent className="p-4 flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="h-10 w-10 mr-1 flex items-center justify-center rounded-md bg-muted/60">
+                      <Package className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-medium leading-tight">Packaging (all items)</h3>
+                      <p className="text-xs text-muted-foreground truncate">Adds ₹10 per quantity. Toggle applies to your entire cart.</p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="global-packaging" className="flex items-center text-sm whitespace-nowrap">
-                      <Package className="mr-1 h-3 w-3" /> Packaging
-                    </Label>
-                    <Switch
-                      id="global-packaging"
-                      checked={items.some((i) => !!i.packaging)}
-                      onCheckedChange={(val) => setPackagingAll(!!val)}
-                    />
+                    <Switch checked={allPackagingOn} onCheckedChange={(v) => setPackagingAll(!!v)} id="packaging-all" />
+                    <Label htmlFor="packaging-all" className="text-sm">{allPackagingOn ? "Enabled" : "Disabled"}</Label>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
             <div className="mb-6">
               {items.map((item) => (
@@ -291,14 +289,8 @@ export default function CartPage() {
                   <Card className="mb-4">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        <div className="relative h-16 w-16 overflow-hidden rounded-md bg-muted">
-                          <Image
-                            src={item.image || "/placeholder.svg"}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                            sizes="64px"
-                          />
+                        <div className="relative h-16 w-16 overflow-hidden rounded-md bg-muted/30">
+                          <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
                         </div>
                         {/* Removed per-item availability message; using top alert only */}
                         <div className="flex-1 flex justify-between gap-3">
@@ -306,19 +298,7 @@ export default function CartPage() {
                           <div className="min-w-0">
                             <h3 className="font-medium leading-tight truncate">{item.name}</h3>
                             <p className="text-sm text-muted-foreground truncate">{item.canteen}</p>
-                            <div className="mt-2 flex items-center gap-2">
-                              <Switch
-                                id={`packaging-${item.id}`}
-                                checked={!!item.packaging}
-                                onCheckedChange={() => togglePackaging(item.id)}
-                              />
-                              <Label htmlFor={`packaging-${item.id}`} className="flex items-center text-sm whitespace-nowrap">
-                                <Package className="mr-1 h-3 w-3" /> Packaging
-                              </Label>
-                              {item.packaging && (
-                                <span className="ml-2 text-xs text-muted-foreground">+₹{10 * item.quantity}</span>
-                              )}
-                            </div>
+                            {/* per-item packaging toggle removed; using global toggle above */}
                           </div>
 
                           {/* Right column: price, delete, quantity */}

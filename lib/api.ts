@@ -65,25 +65,20 @@ class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`
 
-    // Normalize headers into a plain record to avoid HeadersInit union mutation issues
-    const headers: Record<string, string> = { "Content-Type": "application/json" }
-    const optHeaders = options.headers
-    if (optHeaders instanceof Headers) {
-      optHeaders.forEach((value, key) => {
-        headers[key] = value
-      })
-    } else if (Array.isArray(optHeaders)) {
-      for (const [k, v] of optHeaders) headers[k] = v
-    } else if (optHeaders && typeof optHeaders === "object") {
-      Object.assign(headers, optHeaders as Record<string, string>)
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+      ...options.headers,
     }
 
     if (this.token) {
-      headers["Authorization"] = `Bearer ${this.token}`
+      headers.Authorization = `Bearer ${this.token}`
     }
 
     try {
-  const response = await fetch(url, { ...options, headers })
+      const response = await fetch(url, {
+        ...options,
+        headers,
+      })
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} ${response.statusText}`)
