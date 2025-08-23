@@ -4,7 +4,6 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import Image from "next/image"
 import { Plus, Minus, Loader2 } from "lucide-react"
-import FavoriteButton from "./favorite-button"
 import { Badge } from "@/components/ui/badge"
 
 interface FoodItemCardProps {
@@ -77,7 +76,6 @@ export default function FoodItemCard({ item, onAddToCart, quantity = 0, onIncrem
           </div>
         </div>
         <div className="relative h-auto w-28 flex-shrink-0">
-          <FavoriteButton item={item} />
           <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
         </div>
       </CardContent>
