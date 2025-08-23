@@ -12,6 +12,7 @@ export type CartItem = {
   canteen: string
   image?: string
   packaging?: boolean
+  category?: string
 }
 
 type CartContextType = {
@@ -20,6 +21,7 @@ type CartContextType = {
   removeItem: (id: number) => void
   updateQuantity: (id: number, quantity: number) => void
   togglePackaging: (id: number) => void
+  setPackagingAll: (value: boolean) => void
   clearCart: () => void
   totalItems: number
   totalPrice: number
@@ -33,6 +35,7 @@ const CartContext = createContext<CartContextType>({
   removeItem: () => {},
   updateQuantity: () => {},
   togglePackaging: () => {},
+  setPackagingAll: () => {},
   clearCart: () => {},
   totalItems: 0,
   totalPrice: 0,
@@ -105,6 +108,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
+  const setPackagingAll = (value: boolean) => {
+    setItems((prevItems) => prevItems.map((item) => ({ ...item, packaging: value })))
+  }
+
   const clearCart = () => {
     setItems([])
   }
@@ -128,6 +135,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         removeItem,
         updateQuantity,
         togglePackaging,
+  setPackagingAll,
         clearCart,
         totalItems,
         totalPrice,

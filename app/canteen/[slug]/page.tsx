@@ -365,7 +365,7 @@ export default function CanteenPage() {
           ? `${baseUrl}${String(it.ImagePath).startsWith("/") ? it.ImagePath : `/${it.ImagePath}`}`
           : "/placeholder.svg"
         const qty = Number(it.quantity ?? 1) || 1
-        addItem({ id: Number(it.ItemId), name: it.ItemName, price: Number(it.Price) || 0, quantity: qty, canteen: canteenName, image: img })
+  addItem({ id: Number(it.ItemId), name: it.ItemName, price: Number(it.Price) || 0, quantity: qty, canteen: canteenName, image: img, category: String(it.category || "") })
       })
     } catch {}
   }
@@ -415,7 +415,7 @@ export default function CanteenPage() {
     const current = items.find((i) => i.id === item.id)?.quantity || 0
   try { if (typeof window !== "undefined") localStorage.setItem("last_canteen_id", String(canteenId)) } catch {}
     if (current === 0) {
-      addItem({ id: item.id, name: item.name, price: item.price, quantity: 1, canteen: item.canteen, image: item.image })
+  addItem({ id: item.id, name: item.name, price: item.price, quantity: 1, canteen: item.canteen, image: item.image, category: item.category })
     } else {
       updateQuantity(item.id, current + 1)
     }
@@ -451,7 +451,7 @@ export default function CanteenPage() {
     const current = items.find((i) => i.id === item.id)?.quantity || 0
     const next = Math.max(0, current - 1)
     // Optimistic local update
-    if (next === 0) removeItem(item.id)
+  if (next === 0) removeItem(item.id)
     else updateQuantity(item.id, next)
     setBusyItemId(item.id)
     if (!token) {
@@ -529,19 +529,31 @@ export default function CanteenPage() {
         </div>
 
         <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-6 w-full overflow-x-auto">
-            {tabKeys.map((key) => {
-              const cat = categories.find((c) => c.name === key)
-              return (
-                <TabsTrigger key={key} value={key} className="capitalize whitespace-nowrap">
-                  {key}
-                  {cat && (
-                    <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">{cat.no_of_items}</span>
-                  )}
-                </TabsTrigger>
-              )
-            })}
-          </TabsList>
+          {/* Centered, horizontally scrollable categories for mobile */}
+          <div className="-mx-4 mb-6 overflow-x-auto px-4 scroll-smooth snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none]">
+            <style jsx>{`
+              div::-webkit-scrollbar { display: none; }
+            `}</style>
+            <div className="mx-auto w-max">
+              <TabsList className="w-max flex-nowrap justify-center gap-2">
+                {tabKeys.map((key) => {
+                  const cat = categories.find((c) => c.name === key)
+                  return (
+                    <TabsTrigger
+                      key={key}
+                      value={key}
+                      className="shrink-0 whitespace-nowrap rounded-full px-4 capitalize snap-start"
+                    >
+                      {key}
+                      {cat && (
+                        <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">{cat.no_of_items}</span>
+                      )}
+                    </TabsTrigger>
+                  )
+                })}
+              </TabsList>
+            </div>
+          </div>
           <TabsContent value={activeTab} className="mt-0">
             {activeTab === "all" && itemsLoading ? (
               <div className="grid gap-4">
