@@ -138,6 +138,10 @@ export default function CartPage() {
   const gatewayCharge = Math.ceil(totalPrice * 0.03)
   const effectiveGateway = appliedCoupons.includes("GLUG") ? 0 : gatewayCharge
   const ELIGIBLE_FREECANE = ["Starters", "FriedRice", "Noodles", "Pizza", "Burgers", "Lunch"]
+  const hasEligibleFreecane = items.some((it) => {
+    const cat = (it.category || "").toString()
+    return ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
+  })
   const freebiesCount = appliedCoupons.includes("FREECANE")
     ? items.reduce((sum, it) => {
         const cat = (it.category || "").toString()
@@ -147,6 +151,10 @@ export default function CartPage() {
     : 0
 
   const toggleCoupon = (code: "GLUG" | "FREECANE") => {
+    if (code === "FREECANE" && !hasEligibleFreecane) {
+      toast({ title: "No eligible items", description: "FREECANE applies only to Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch items.", variant: "destructive" })
+      return appliedCoupons
+    }
     setAppliedCoupons((prev) => {
       const next = prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
       if (!prev.includes(code)) {
@@ -168,6 +176,10 @@ export default function CartPage() {
     }
     if (appliedCoupons.includes(code)) {
       toast({ title: "Already applied", description: `${code} is already in use.` })
+      return
+    }
+    if (code === "FREECANE" && !hasEligibleFreecane) {
+      toast({ title: "No eligible items", description: "Add a Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch item to use FREECANE.", variant: "destructive" })
       return
     }
     toggleCoupon(code as "GLUG" | "FREECANE")
