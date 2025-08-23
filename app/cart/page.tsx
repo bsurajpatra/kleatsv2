@@ -31,7 +31,7 @@ export default function CartPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [unavailableMap, setUnavailableMap] = useState<Record<number, string>>({})
   const [appliedCoupons, setAppliedCoupons] = useState<string[]>([])
-  const [availableCoupons, setAvailableCoupons] = useState<string[]>(["FREECANE", "GLUG"])
+  const [availableCoupons, setAvailableCoupons] = useState<string[]>([])
   const [couponInput, setCouponInput] = useState("")
   const [isFetchingCoupons, setIsFetchingCoupons] = useState(false)
   const [flashCoupon, setFlashCoupon] = useState<string | null>(null)
@@ -355,48 +355,50 @@ export default function CartPage() {
                   </Button>
                 </div>
 
-                {/* Available chips */}
-                <div className="flex flex-wrap gap-2">
-                  <AnimatePresence>
-                    {availableCoupons.map((code, idx) => {
-                      const active = appliedCoupons.includes(code)
-                      return (
-                        <motion.div
-                          key={code}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="relative"
-                        >
-                          <motion.button
-                            className={`relative rounded-full px-3 py-1.5 text-sm border ${active ? "bg-primary text-primary-foreground border-transparent" : "bg-background hover:bg-muted border-input"}`}
-                            onClick={() => toggleCoupon(code as "GLUG" | "FREECANE")}
-                            whileHover={{ scale: 1.04 }}
-                            whileTap={{ scale: 0.98 }}
+                {/* Available chips (render only after Fetch) */}
+                {availableCoupons.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <AnimatePresence>
+                      {availableCoupons.map((code, idx) => {
+                        const active = appliedCoupons.includes(code)
+                        return (
+                          <motion.div
+                            key={code}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -6 }}
+                            transition={{ delay: idx * 0.05 }}
+                            className="relative"
                           >
-                            <span className="inline-flex items-center">
-                              {code === "FREECANE" ? <Gift className="mr-1 h-4 w-4" /> : null}
-                              {code}
-                            </span>
-                            <AnimatePresence>
-                              {flashCoupon === code && (
-                                <motion.span
-                                  key="ring"
-                                  className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-primary"
-                                  initial={{ opacity: 0, scale: 0.9 }}
-                                  animate={{ opacity: 0.6, scale: 1.06 }}
-                                  exit={{ opacity: 0 }}
-                                  transition={{ duration: 0.6 }}
-                                />
-                              )}
-                            </AnimatePresence>
-                          </motion.button>
-                        </motion.div>
-                      )
-                    })}
-                  </AnimatePresence>
-                </div>
+                            <motion.button
+                              className={`relative rounded-full px-3 py-1.5 text-sm border ${active ? "bg-primary text-primary-foreground border-transparent" : "bg-background hover:bg-muted border-input"}`}
+                              onClick={() => toggleCoupon(code as "GLUG" | "FREECANE")}
+                              whileHover={{ scale: 1.04 }}
+                              whileTap={{ scale: 0.98 }}
+                            >
+                              <span className="inline-flex items-center">
+                                {code === "FREECANE" ? <Gift className="mr-1 h-4 w-4" /> : null}
+                                {code}
+                              </span>
+                              <AnimatePresence>
+                                {flashCoupon === code && (
+                                  <motion.span
+                                    key="ring"
+                                    className="pointer-events-none absolute inset-0 rounded-full ring-2 ring-primary"
+                                    initial={{ opacity: 0, scale: 0.9 }}
+                                    animate={{ opacity: 0.6, scale: 1.06 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.6 }}
+                                  />
+                                )}
+                              </AnimatePresence>
+                            </motion.button>
+                          </motion.div>
+                        )
+                      })}
+                    </AnimatePresence>
+                  </div>
+                )}
                 <p className="text-xs text-muted-foreground">
                   GLUG waives the Gateway Charge. FREECANE adds a free Sugarcane juice for each item in your cart.
                 </p>
@@ -500,7 +502,7 @@ export default function CartPage() {
                   animate={flashCoupon === "GLUG" ? { scale: [1, 1.03, 1] } : {}}
                   transition={{ duration: 0.4 }}
                 >
-                  <span>Gateway Charge (3%){appliedCoupons.includes("GLUG") ? " — waived by GLUG" : ""}</span>
+                  <span>Gateway Charge (3%){appliedCoupons.includes("GLUG") ? " — waived by KL-GLUG" : ""}</span>
                   <span>₹{effectiveGateway}</span>
                 </motion.div>
                 <Separator className="my-2" />
