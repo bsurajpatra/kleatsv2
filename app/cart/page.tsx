@@ -552,7 +552,14 @@ export default function CartPage() {
             <p className="mb-6 text-center text-muted-foreground">
               Looks like you haven&apos;t added any items to your cart yet.
             </p>
-            <Link href="/">
+            <Link
+              href={
+                (typeof window !== "undefined" &&
+                  (localStorage.getItem("last_canteen_id")
+                    ? `/canteen/${localStorage.getItem("last_canteen_id")}`
+                    : "/canteens")) || "/canteens"
+              }
+            >
               <Button>Browse Menu</Button>
             </Link>
           </div>
