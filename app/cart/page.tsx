@@ -21,7 +21,7 @@ import { Slider } from "@/components/ui/slider"
 import { motion, AnimatePresence } from "framer-motion"
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, togglePackaging, totalPrice, clearCart, canClearCart } = useCart()
+  const { items, removeItem, updateQuantity, togglePackaging, setPackagingAll, totalPrice, clearCart, canClearCart } = useCart()
   const { toast } = useToast()
   const { isAuthenticated, isInitialized } = useAuth()
   const router = useRouter()
@@ -258,6 +258,28 @@ export default function CartPage() {
               </motion.div>
             )}
 
+            {/* Order type (global packaging) */}
+            <Card className="mb-6">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm text-muted-foreground">Order type</p>
+                    <p className="font-medium">{items.some((i) => !!i.packaging) ? "Pickup (with packaging)" : "Dine-in"}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="global-packaging" className="flex items-center text-sm whitespace-nowrap">
+                      <Package className="mr-1 h-3 w-3" /> Packaging
+                    </Label>
+                    <Switch
+                      id="global-packaging"
+                      checked={items.some((i) => !!i.packaging)}
+                      onCheckedChange={(val) => setPackagingAll(!!val)}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             <div className="mb-6">
               {items.map((item) => (
                 <motion.div
@@ -269,11 +291,15 @@ export default function CartPage() {
                   <Card className="mb-4">
                     <CardContent className="p-4">
                       <div className="flex items-start gap-3">
-                        {item.image && (
-                          <div className="relative h-16 w-16 overflow-hidden rounded-md">
-                            <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
-                          </div>
-                        )}
+                        <div className="relative h-16 w-16 overflow-hidden rounded-md bg-muted">
+                          <Image
+                            src={item.image || "/placeholder.svg"}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                            sizes="64px"
+                          />
+                        </div>
                         {/* Removed per-item availability message; using top alert only */}
                         <div className="flex-1 flex justify-between gap-3">
                           {/* Left column: details and packaging */}
