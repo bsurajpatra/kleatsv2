@@ -4,13 +4,15 @@ import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import CartIcon from "@/components/cart-icon"
 import FoodItemCard from "@/components/food-item-card"
 import { useCart } from "@/hooks/use-cart"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import SearchBar from "@/components/search-bar"
+import { Button } from "@/components/ui/button"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -124,6 +126,11 @@ export default function CanteenPage() {
   const [catItemsMap, setCatItemsMap] = useState<Record<string, RawItem[]>>({})
   const [itemsLoading, setItemsLoading] = useState<boolean>(true)
   const [categoryLoading, setCategoryLoading] = useState<boolean>(false)
+  // Search state
+  const [searchQuery, setSearchQuery] = useState<string>("")
+  const [searchResults, setSearchResults] = useState<RawItem[] | null>(null)
+  const [searchLoading, setSearchLoading] = useState<boolean>(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
   // Remember this canteen so other pages can navigate back
   useEffect(() => {
@@ -275,9 +282,58 @@ export default function CanteenPage() {
 
   const displayedItems = useMemo(() => {
     if (!details) return []
+    // When searching, show search results only
+    if (searchResults) {
+      return searchResults.map((it) => mapToCardItem(it, details.CanteenName, baseUrl))
+    }
     const items = activeTab === "all" ? itemsAll : catItemsMap[activeTab] || []
     return items.map((it) => mapToCardItem(it, details.CanteenName, baseUrl))
-  }, [activeTab, itemsAll, catItemsMap, details, baseUrl])
+  }, [activeTab, itemsAll, catItemsMap, details, baseUrl, searchResults])
+
+  // Perform search
+  const runSearch = async (q: string) => {
+    const trimmed = q.trim()
+    if (!trimmed) {
+      setSearchResults(null)
+      setSearchError(null)
+      return
+    }
+    setSearchLoading(true)
+    setSearchError(null)
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || ""
+      const url = `${base}/api/explore/search/items?q=${encodeURIComponent(trimmed)}&canteenId=${encodeURIComponent(String(canteenIdNum))}&offset=0&limit=50`
+      const res = await fetch(url, { cache: "no-store" })
+      if (!res.ok) throw new Error(`Search HTTP ${res.status}`)
+      const json: ItemsResponse = await res.json()
+      const arr = Array.isArray(json?.data) ? json.data : []
+      // Filter to canteenId just in case
+      const filtered = arr.filter((it) => it.ava !== false && Number(it.canteenId) === canteenIdNum)
+      setSearchResults(filtered)
+    } catch (e) {
+      console.error("Canteen search failed", e)
+      setSearchResults([])
+      setSearchError("No results found or an error occurred.")
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
+  // Auto search as user types (debounced)
+  useEffect(() => {
+    const q = searchQuery.trim()
+    if (!q) {
+      setSearchResults(null)
+      setSearchError(null)
+      setSearchLoading(false)
+      return
+    }
+    const t = setTimeout(() => {
+      runSearch(q)
+    }, 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery])
 
   if (loading) {
     return (
@@ -528,7 +584,55 @@ export default function CanteenPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+        {/* Inline search with a clear action button; no overlay suggestions to avoid overlap */}
+        <div className="mb-4">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <SearchBar
+                placeholder="Search this canteen’s menu..."
+                value={searchQuery}
+                onChange={(v) => {
+                  setSearchQuery(v)
+                  if (!v) setSearchResults(null)
+                }}
+                onSearch={runSearch}
+                showSuggestions={false}
+              />
+            </div>
+            <Button
+              variant="default"
+              size="icon"
+              aria-label="Search"
+              onClick={() => runSearch(searchQuery)}
+              disabled={searchLoading || !searchQuery.trim()}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Search result header */}
+        {searchResults && (
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {searchLoading ? "Searching…" : `Results for "${searchQuery}" (${searchResults.length})`}
+            </p>
+            <button
+              className="text-xs underline text-primary"
+              onClick={() => {
+                setSearchQuery("")
+                setSearchResults(null)
+                setSearchError(null)
+              }}
+            >
+              Clear search
+            </button>
+          </div>
+        )}
+
+  {/* Hide tabs while searching to keep layout clean */}
+  {!searchResults && (
+  <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
           {/* Centered, horizontally scrollable categories for mobile */}
           <div className="-mx-4 mb-6 overflow-x-auto px-4 scroll-smooth snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none]">
             <style jsx>{`
@@ -608,6 +712,41 @@ export default function CanteenPage() {
             )}
           </TabsContent>
         </Tabs>
+        )}
+
+        {/* When searching, show results list using the same grid */}
+        {searchResults && (
+          <div className="mt-0">
+            {searchLoading ? (
+              <div className="grid gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-24 w-full animate-pulse rounded-lg bg-muted" />
+                ))}
+              </div>
+            ) : searchResults.length > 0 ? (
+              <div className="grid gap-4">
+                {displayedItems.map((item) => {
+                  const localQty = items.find((i) => i.id === item.id)?.quantity || 0
+                  return (
+                    <FoodItemCard
+                      key={item.id}
+                      item={item}
+                      quantity={localQty}
+                      isLoading={busyItemId === item.id}
+                      onAddToCart={handleAddToCart}
+                      onIncrement={() => handleIncrement(item)}
+                      onDecrement={() => handleDecrement(item)}
+                    />
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">{searchError || `No results for "${searchQuery}"`}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <CartIcon />
