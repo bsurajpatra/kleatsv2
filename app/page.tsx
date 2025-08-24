@@ -11,6 +11,7 @@ import Footer from "@/components/footer"
 import Logo from "@/components/logo"
 import ThemeToggle from "@/components/theme-toggle"
 import { motion } from "framer-motion"
+import { FREECANE_ENABLED } from "@/lib/utils"
 import { Star, Clock, Utensils, Copy, Check, ArrowRight, CupSoda, Receipt, Info } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -348,6 +349,7 @@ export default function Home() {
                 }}
               >
                 {/* Coupon: Free Sugarcane with every meal (auto-applies) */}
+                {FREECANE_ENABLED && (
                 <motion.div
                   variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
                   className="rounded-xl border bg-card/60 backdrop-blur-sm overflow-hidden snap-start min-w-[85%] sm:min-w-0"
@@ -403,6 +405,7 @@ export default function Home() {
                     </Dialog>
                   </div>
                 </motion.div>
+                )}
 
                 {/* Coupon: GLUG – removes all service charges */}
                 <motion.div

@@ -17,6 +17,7 @@ import { Progress } from "@/components/ui/progress"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter, useSearchParams } from "next/navigation"
 import { motion } from "framer-motion"
+import { FREECANE_ENABLED } from "@/lib/utils"
 // Removed interactive slider; time is selected on the cart page
 
 export default function PaymentPage() {
@@ -417,7 +418,7 @@ export default function PaymentPage() {
                     <span>Subtotal</span>
                     <span>₹{totalPrice}</span>
                   </div>
-                  {coupons.includes("FREECANE") && (
+                  {FREECANE_ENABLED && coupons.includes("FREECANE") && (
                     <motion.div className="flex items-center justify-between" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                       <span>Free Sugarcane (FREECANE)</span>
                       <span>₹0</span>

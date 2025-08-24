@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 import { Slider } from "@/components/ui/slider"
+import { FREECANE_ENABLED } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 
 export default function CartPage() {
@@ -141,7 +142,7 @@ export default function CartPage() {
     const cat = (it.category || "").toString()
     return ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
   })
-  const freebiesCount = appliedCoupons.includes("FREECANE")
+  const freebiesCount = appliedCoupons.includes("FREECANE") && FREECANE_ENABLED
     ? items.reduce((sum, it) => {
         const cat = (it.category || "").toString()
         const match = ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
@@ -150,6 +151,10 @@ export default function CartPage() {
     : 0
 
   const toggleCoupon = (code: "GLUG" | "FREECANE") => {
+    if (code === "FREECANE" && !FREECANE_ENABLED) {
+      toast({ title: "Coupon disabled", description: "FREECANE is currently not available.", variant: "destructive" })
+      return appliedCoupons
+    }
     if (code === "FREECANE" && !hasEligibleFreecane) {
       toast({ title: "No eligible items", description: "FREECANE applies only to Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch items.", variant: "destructive" })
       return appliedCoupons
@@ -171,6 +176,10 @@ export default function CartPage() {
     if (!code) return
     if (code !== "GLUG" && code !== "FREECANE") {
       toast({ title: "Invalid coupon", description: "This code isn’t supported.", variant: "destructive" })
+      return
+    }
+    if (code === "FREECANE" && !FREECANE_ENABLED) {
+      toast({ title: "Coupon disabled", description: "FREECANE is currently not available.", variant: "destructive" })
       return
     }
     if (appliedCoupons.includes(code)) {
@@ -385,9 +394,9 @@ export default function CartPage() {
                 </div>
 
                 {/* Static coupon chips */}
-                <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
                   <AnimatePresence>
-                    {["FREECANE", "GLUG"].map((code, idx) => {
+          {[...(FREECANE_ENABLED ? ["FREECANE"] as const : []), "GLUG" as const].map((code, idx) => {
                       const active = appliedCoupons.includes(code)
                       return (
                         <motion.div
