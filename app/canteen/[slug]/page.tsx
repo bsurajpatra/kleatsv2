@@ -86,6 +86,14 @@ type ItemsResponse = {
   }
 }
 
+function toHHMM(t?: string | null): string | undefined {
+  if (!t) return undefined
+  // Accept formats like HH:mm or HH:mm:ss, take first 5 characters when long
+  const s = String(t).trim()
+  if (s.length >= 5 && s[2] === ":") return s.slice(0, 5)
+  return s
+}
+
 function mapToCardItem(raw: RawItem, canteenName: string, baseUrl: string) {
   const img = raw.ImagePath
     ? `${baseUrl}${raw.ImagePath.startsWith("/") ? raw.ImagePath : `/${raw.ImagePath}`}`
@@ -93,6 +101,11 @@ function mapToCardItem(raw: RawItem, canteenName: string, baseUrl: string) {
   // Deterministic rating > 4.5 for items too
   const ratingSeed = `${raw.ItemId}-${raw.ItemName}`
   const rating = Number(pseudoRating(ratingSeed))
+  // Availability: respect backend ava flag and item timing window
+  const st = toHHMM(raw.startTime)
+  const et = toHHMM(raw.endTime)
+  const timeOpen = isOpenNow(st, et)
+  const available = (raw.ava !== false) && (timeOpen !== false)
   return {
     id: raw.ItemId,
     name: raw.ItemName,
@@ -102,6 +115,9 @@ function mapToCardItem(raw: RawItem, canteenName: string, baseUrl: string) {
     category: raw.category,
     description: raw.Description,
     rating,
+    available,
+    startTime: st,
+    endTime: et,
   }
 }
 
@@ -715,15 +731,17 @@ export default function CanteenPage() {
               <div className="grid gap-4">
                 {displayedItems.map((item) => {
                   const localQty = items.find((i) => i.id === item.id)?.quantity || 0
+                  const unavailable = (item as any).available === false
                   return (
                     <FoodItemCard
                       key={item.id}
                       item={item}
                       quantity={localQty}
                       isLoading={busyItemId === item.id}
-                      onAddToCart={handleAddToCart}
-                      onIncrement={() => handleIncrement(item)}
-                      onDecrement={() => handleDecrement(item)}
+                      unavailable={unavailable}
+                      onAddToCart={unavailable ? undefined : handleAddToCart}
+                      onIncrement={unavailable ? undefined : () => handleIncrement(item)}
+                      onDecrement={unavailable ? undefined : () => handleDecrement(item)}
                     />
                   )
                 })}
@@ -767,15 +785,17 @@ export default function CanteenPage() {
               <div className="grid gap-4">
                 {displayedItems.map((item) => {
                   const localQty = items.find((i) => i.id === item.id)?.quantity || 0
+                  const unavailable = (item as any).available === false
                   return (
                     <FoodItemCard
                       key={item.id}
                       item={item}
                       quantity={localQty}
                       isLoading={busyItemId === item.id}
-                      onAddToCart={handleAddToCart}
-                      onIncrement={() => handleIncrement(item)}
-                      onDecrement={() => handleDecrement(item)}
+                      unavailable={unavailable}
+                      onAddToCart={unavailable ? undefined : handleAddToCart}
+                      onIncrement={unavailable ? undefined : () => handleIncrement(item)}
+                      onDecrement={unavailable ? undefined : () => handleDecrement(item)}
                     />
                   )
                 })}

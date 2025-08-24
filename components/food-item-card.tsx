@@ -18,6 +18,7 @@ interface FoodItemCardProps {
     rating?: number
     preparationTime?: string
   }
+  unavailable?: boolean
   onAddToCart?: (item: any) => void
   quantity?: number
   onIncrement?: () => void
@@ -25,7 +26,7 @@ interface FoodItemCardProps {
   isLoading?: boolean
 }
 
-export default function FoodItemCard({ item, onAddToCart, quantity = 0, onIncrement, onDecrement, isLoading = false }: FoodItemCardProps) {
+export default function FoodItemCard({ item, unavailable = false, onAddToCart, quantity = 0, onIncrement, onDecrement, isLoading = false }: FoodItemCardProps) {
   const handleAction = () => {
     if (onAddToCart) {
       onAddToCart(item)
@@ -56,7 +57,9 @@ export default function FoodItemCard({ item, onAddToCart, quantity = 0, onIncrem
             )}
             <div className="flex items-center justify-between">
               <span className="font-bold text-lg">₹{item.price}</span>
-              {quantity > 0 ? (
+              {unavailable ? (
+                <span className="text-xs text-muted-foreground">Unavailable</span>
+              ) : quantity > 0 ? (
                 <div className="flex items-center gap-2">
                   <Button size="icon" variant="outline" disabled={isLoading} onClick={onDecrement} className="h-8 w-8 rounded-full">
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Minus className="h-4 w-4" />}
@@ -76,7 +79,12 @@ export default function FoodItemCard({ item, onAddToCart, quantity = 0, onIncrem
           </div>
         </div>
         <div className="relative h-auto w-28 flex-shrink-0">
-          <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className="object-cover" />
+          <Image src={item.image || "/placeholder.svg"} alt={item.name} fill className={"object-cover " + (unavailable ? "grayscale opacity-60" : "")} />
+          {unavailable && (
+            <div className="absolute left-1 top-1 rounded bg-black/70 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+              Unavailable
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

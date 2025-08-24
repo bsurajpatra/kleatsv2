@@ -267,7 +267,7 @@ export default function Home() {
         <div className="container mx-auto flex items-center justify-between">
           <Logo imgClassName="h-10 w-auto md:h-11" />
           <div className="hidden md:block md:w-1/3">
-            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search for food or canteen..." />
+            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search for food..." />
           </div>
           <div className="hidden md:flex md:items-center md:gap-2">
             <ThemeToggle />
@@ -486,7 +486,7 @@ export default function Home() {
 
       <div className="container px-4 py-6">
         <div className="md:hidden mb-6 flex items-center gap-2">
-          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search for food or canteen..." />
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search for food..." />
           <ThemeToggle />
         </div>
 
