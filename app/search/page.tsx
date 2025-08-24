@@ -16,7 +16,7 @@ import CartIcon from "@/components/cart-icon"
 import Footer from "@/components/footer"
 import FoodItemCard from "@/components/food-item-card"
 import SearchBar from "@/components/search-bar"
-import { canteenService, type MenuItem } from "@/services/canteen-service"
+import type { MenuItem } from "@/services/canteen-service"
 import { motion } from "framer-motion"
 import { useCart } from "@/hooks/use-cart"
 import { useAuth } from "@/hooks/use-auth"
@@ -49,6 +49,23 @@ function SearchPageContent() {
   const [pendingAddItem, setPendingAddItem] = useState<any | null>(null)
 
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+  // Cache canteenId->name to avoid repeated fetches across searches
+  const [canteenNameCache, setCanteenNameCache] = useState<Record<number, string>>(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const s = sessionStorage.getItem("canteenNameCache")
+        return s ? JSON.parse(s) : {}
+      }
+    } catch {}
+    return {}
+  })
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem("canteenNameCache", JSON.stringify(canteenNameCache))
+      }
+    } catch {}
+  }, [canteenNameCache])
   const getToken = () =>
     (typeof window !== "undefined" && (localStorage.getItem("auth_token") || localStorage.getItem("token"))) || null
 
@@ -113,16 +130,94 @@ function SearchPageContent() {
     setFilteredResults(filtered)
   }, [results, selectedCategory, priceRange, sortBy])
 
+  // Ensure canteen names are available in cache; returns merged cache
+  const ensureCanteenNames = async (items: MenuItem[]) => {
+    const needed = Array.from(
+      new Set(
+        items
+          .map((it) => Number(it.canteenId))
+          .filter((n) => Number.isFinite(n))
+      )
+    ) as number[]
+    const toFetch = needed.filter((id) => !canteenNameCache[id])
+    if (toFetch.length === 0) return canteenNameCache
+    const entries: Array<[number, string]> = []
+    await Promise.all(
+      toFetch.map(async (id) => {
+        try {
+          const res = await fetch(`${baseUrl}/api/explore/canteen/details/${id}`, { cache: "no-store" })
+          const json = await res.json().catch(() => ({} as any))
+          const name = json?.data?.CanteenName || `Canteen ${id}`
+          entries.push([id, name])
+        } catch {
+          entries.push([id, `Canteen ${id}`])
+        }
+      })
+    )
+    const merged: Record<number, string> = { ...canteenNameCache }
+    for (const [id, name] of entries) merged[id] = name
+    return merged
+  }
+
   const performSearch = async (searchQuery: string) => {
-    if (!searchQuery.trim()) {
+    const q = searchQuery.trim()
+    if (!q) {
       setResults([])
       return
     }
 
     setIsLoading(true)
     try {
-      const searchResults = await canteenService.searchMenuItems(searchQuery)
-      setResults(searchResults)
+      const url = `${baseUrl}/api/explore/search/items?q=${encodeURIComponent(q)}&available_now=true&offset=0&limit=50`
+      const res = await fetch(url, { cache: "no-store" })
+      if (!res.ok) throw new Error(`Search HTTP ${res.status}`)
+      const json = await res.json()
+      const rawArr: any[] = Array.isArray(json?.data) ? json.data : []
+      const buildImageUrl = (path?: string | null) => {
+        if (!path) return "/placeholder.svg"
+        return `${baseUrl}${String(path).startsWith("/") ? path : `/${path}`}`
+      }
+      const rate = (seed: string) => {
+        let h = 0
+        for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0
+        const inc = ((h % 50) + 1) / 100
+        return Number((4.5 + inc).toFixed(2))
+      }
+      let mapped: MenuItem[] = rawArr
+        .filter((it) => it.ava !== false)
+        .map((it) => {
+          const id = Number(it.ItemId)
+          const cId = String(it.canteenId ?? "")
+          const name = String(it.ItemName || "Item")
+          return {
+            id,
+            name,
+            description: String(it.Description || ""),
+            price: Number(it.Price || 0),
+            image: buildImageUrl(it.ImagePath),
+            category: String(it.category || ""),
+            canteenId: cId,
+            canteenName: `Canteen ${it.canteenId}`,
+            available: it.ava !== false,
+            rating: rate(`${id}-${name}`),
+            preparationTime: undefined,
+            ingredients: undefined,
+            nutritionInfo: undefined as any,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+        })
+      // Attach real canteen names and cache them for reuse
+      const mergedCache = await ensureCanteenNames(mapped)
+      setCanteenNameCache(mergedCache)
+      mapped = mapped.map((it) => {
+        const cidNum = Number(it.canteenId)
+        return {
+          ...it,
+          canteenName: Number.isFinite(cidNum) ? (mergedCache[cidNum] || it.canteenName) : it.canteenName,
+        }
+      })
+      setResults(mapped)
     } catch (error) {
       console.error("Search failed:", error)
       setResults([])
