@@ -39,6 +39,22 @@ export default function SearchBar({
 
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 
+  // Cache canteenId -> canteenName to avoid repeated detail fetches
+  const [canteenNameCache, setCanteenNameCache] = useState<Record<number, string>>(() => {
+    try {
+      if (typeof window !== "undefined") {
+        const s = sessionStorage.getItem("canteenNameCache")
+        return s ? JSON.parse(s) : {}
+      }
+    } catch {}
+    return {}
+  })
+  useEffect(() => {
+    try {
+      if (typeof window !== "undefined") sessionStorage.setItem("canteenNameCache", JSON.stringify(canteenNameCache))
+    } catch {}
+  }, [canteenNameCache])
+
   // Popular search terms
   const popularSearches = ["Dosa", "Coffee", "Chicken Rice", "Idli", "Noodles", "Samosa", "Ice Cream", "Juice"]
 
@@ -61,7 +77,7 @@ export default function SearchBar({
           if (!res.ok) throw new Error(`Search HTTP ${res.status}`)
           const json = await res.json()
           const raw = Array.isArray(json?.data) ? json.data : []
-          const mapped = raw.map((it: any) => ({
+          let mapped = raw.map((it: any) => ({
             id: it.ItemId,
             name: it.ItemName,
             price: it.Price,
@@ -70,6 +86,42 @@ export default function SearchBar({
             canteenId: it.canteenId,
             canteenName: `Canteen ${it.canteenId}`,
           }))
+          // Resolve real canteen names
+          const neededIds: number[] = Array.from(
+            new Set(
+              mapped
+                .map((m: any) => Number(m.canteenId))
+                .filter((n: number) => Number.isFinite(n))
+            )
+          )
+          const toFetch = neededIds.filter((id) => !canteenNameCache[id])
+          if (toFetch.length > 0) {
+            const entries: Array<[number, string]> = []
+            await Promise.all(
+              toFetch.map(async (id) => {
+                try {
+                  const d = await fetch(`${baseUrl}/api/explore/canteen/details/${id}`, { cache: "no-store" })
+                  const j = await d.json().catch(() => ({} as any))
+                  const name = j?.data?.CanteenName || `Canteen ${id}`
+                  entries.push([id, name])
+                } catch {
+                  entries.push([id, `Canteen ${id}`])
+                }
+              })
+            )
+            const merged: Record<number, string> = { ...canteenNameCache }
+            for (const [id, name] of entries) merged[id] = name
+            setCanteenNameCache(merged)
+            mapped = mapped.map((m: any) => {
+              const cid = Number(m.canteenId)
+              return { ...m, canteenName: Number.isFinite(cid) ? (merged[cid] || m.canteenName) : m.canteenName }
+            })
+          } else {
+            mapped = mapped.map((m: any) => {
+              const cid = Number(m.canteenId)
+              return { ...m, canteenName: Number.isFinite(cid) ? (canteenNameCache[cid] || m.canteenName) : m.canteenName }
+            })
+          }
           setSuggestions(mapped.slice(0, 6))
         } catch (error) {
           console.error("Search error:", error)
