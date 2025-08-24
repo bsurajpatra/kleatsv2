@@ -137,7 +137,7 @@ export default function CartPage() {
   // Gateway charge: ceil of 3% of the total (including packaging)
   const gatewayCharge = Math.ceil(totalPrice * 0.03)
   const effectiveGateway = appliedCoupons.includes("GLUG") ? 0 : gatewayCharge
-  const ELIGIBLE_FREECANE = ["Starters", "FriedRice", "Noodles", "Pizza", "Burgers", "Lunch"]
+  const ELIGIBLE_FREECANE = ["Starters", "FriedRice", "Pizza", "Burgers", "Lunch"]
   const hasEligibleFreecane = items.some((it) => {
     const cat = (it.category || "").toString()
     return ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
@@ -156,7 +156,7 @@ export default function CartPage() {
       return appliedCoupons
     }
     if (code === "FREECANE" && !hasEligibleFreecane) {
-      toast({ title: "No eligible items", description: "FREECANE applies only to Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch items.", variant: "destructive" })
+  toast({ title: "No eligible items", description: "FREECANE applies only to Starters, FriedRice, Pizza, Burgers, or Lunch items.", variant: "destructive" })
       return appliedCoupons
     }
     setAppliedCoupons((prev) => {
@@ -192,7 +192,7 @@ export default function CartPage() {
       return
     }
     if (code === "FREECANE" && !hasEligibleFreecane) {
-      toast({ title: "No eligible items", description: "Add a Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch item to use FREECANE.", variant: "destructive" })
+  toast({ title: "No eligible items", description: "Add a Starters, FriedRice, Pizza, Burgers, or Lunch item to use FREECANE.", variant: "destructive" })
       return
     }
     toggleCoupon(code as "GLUG" | "FREECANE")
@@ -285,8 +285,7 @@ export default function CartPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Switch checked={allPackagingOn} onCheckedChange={(v) => setPackagingAll(!!v)} id="packaging-all" />
-                    <Label htmlFor="packaging-all" className="text-sm">{allPackagingOn ? "Enabled" : "Disabled"}</Label>
+                    <Switch checked={allPackagingOn} onCheckedChange={(v) => setPackagingAll(!!v)} id="packaging-all" aria-label="Toggle packaging for all items" />
                   </div>
                 </CardContent>
               </Card>
@@ -441,7 +440,7 @@ export default function CartPage() {
                   </AnimatePresence>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  GLUG waives the Gateway Charge. FREECANE adds a free Sugarcane juice for each applicable item (Starters, FriedRice, Noodles, Pizza, Burgers, Lunch).
+                  GLUG waives the Gateway Charge. FREECANE adds a free Sugarcane juice for each applicable item (Starters, FriedRice, Pizza, Burgers, Lunch).
                 </p>
                 <AnimatePresence>
                   {freebiesCount > 0 && (
@@ -538,14 +537,22 @@ export default function CartPage() {
                     <span>₹0</span>
                   </div>
                 )}
+                {/* Always show the 3% gateway charge line */}
                 <motion.div
                   className="flex items-center justify-between"
                   animate={flashCoupon === "GLUG" ? { scale: [1, 1.03, 1] } : {}}
                   transition={{ duration: 0.4 }}
                 >
-                  <span>Gateway Charge (3%){appliedCoupons.includes("GLUG") ? " — waived by KL-GLUG" : ""}</span>
-                  <span>₹{effectiveGateway}</span>
+                  <span>Gateway Charge (3%)</span>
+                  <span>₹{gatewayCharge}</span>
                 </motion.div>
+                {/* If GLUG is applied, show a separate waiver line offsetting the charge */}
+                {appliedCoupons.includes("GLUG") && (
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Waived by KL-GLUG</span>
+                    <span>-₹{gatewayCharge}</span>
+                  </div>
+                )}
                 <Separator className="my-2" />
                 <div className="flex items-center justify-between font-medium">
                   <span>Total</span>
