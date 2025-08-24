@@ -4,13 +4,16 @@ import { useEffect, useMemo, useState } from "react"
 import { useParams } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, Search } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import CartIcon from "@/components/cart-icon"
 import FoodItemCard from "@/components/food-item-card"
 import { useCart } from "@/hooks/use-cart"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import SearchBar from "@/components/search-bar"
+import { Button } from "@/components/ui/button"
+import { toast } from "@/hooks/use-toast"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,6 +86,14 @@ type ItemsResponse = {
   }
 }
 
+function toHHMM(t?: string | null): string | undefined {
+  if (!t) return undefined
+  // Accept formats like HH:mm or HH:mm:ss, take first 5 characters when long
+  const s = String(t).trim()
+  if (s.length >= 5 && s[2] === ":") return s.slice(0, 5)
+  return s
+}
+
 function mapToCardItem(raw: RawItem, canteenName: string, baseUrl: string) {
   const img = raw.ImagePath
     ? `${baseUrl}${raw.ImagePath.startsWith("/") ? raw.ImagePath : `/${raw.ImagePath}`}`
@@ -90,6 +101,11 @@ function mapToCardItem(raw: RawItem, canteenName: string, baseUrl: string) {
   // Deterministic rating > 4.5 for items too
   const ratingSeed = `${raw.ItemId}-${raw.ItemName}`
   const rating = Number(pseudoRating(ratingSeed))
+  // Availability: respect backend ava flag and item timing window
+  const st = toHHMM(raw.startTime)
+  const et = toHHMM(raw.endTime)
+  const timeOpen = isOpenNow(st, et)
+  const available = (raw.ava !== false) && (timeOpen !== false)
   return {
     id: raw.ItemId,
     name: raw.ItemName,
@@ -99,6 +115,9 @@ function mapToCardItem(raw: RawItem, canteenName: string, baseUrl: string) {
     category: raw.category,
     description: raw.Description,
     rating,
+    available,
+    startTime: st,
+    endTime: et,
   }
 }
 
@@ -124,6 +143,11 @@ export default function CanteenPage() {
   const [catItemsMap, setCatItemsMap] = useState<Record<string, RawItem[]>>({})
   const [itemsLoading, setItemsLoading] = useState<boolean>(true)
   const [categoryLoading, setCategoryLoading] = useState<boolean>(false)
+  // Search state
+  const [searchQuery, setSearchQuery] = useState<string>("")
+  const [searchResults, setSearchResults] = useState<RawItem[] | null>(null)
+  const [searchLoading, setSearchLoading] = useState<boolean>(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
   // Remember this canteen so other pages can navigate back
   useEffect(() => {
@@ -275,9 +299,58 @@ export default function CanteenPage() {
 
   const displayedItems = useMemo(() => {
     if (!details) return []
+    // When searching, show search results only
+    if (searchResults) {
+      return searchResults.map((it) => mapToCardItem(it, details.CanteenName, baseUrl))
+    }
     const items = activeTab === "all" ? itemsAll : catItemsMap[activeTab] || []
     return items.map((it) => mapToCardItem(it, details.CanteenName, baseUrl))
-  }, [activeTab, itemsAll, catItemsMap, details, baseUrl])
+  }, [activeTab, itemsAll, catItemsMap, details, baseUrl, searchResults])
+
+  // Perform search
+  const runSearch = async (q: string) => {
+    const trimmed = q.trim()
+    if (!trimmed) {
+      setSearchResults(null)
+      setSearchError(null)
+      return
+    }
+    setSearchLoading(true)
+    setSearchError(null)
+    try {
+      const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || ""
+      const url = `${base}/api/explore/search/items?q=${encodeURIComponent(trimmed)}&canteenId=${encodeURIComponent(String(canteenIdNum))}&offset=0&limit=50`
+      const res = await fetch(url, { cache: "no-store" })
+      if (!res.ok) throw new Error(`Search HTTP ${res.status}`)
+      const json: ItemsResponse = await res.json()
+      const arr = Array.isArray(json?.data) ? json.data : []
+      // Filter to canteenId just in case
+      const filtered = arr.filter((it) => it.ava !== false && Number(it.canteenId) === canteenIdNum)
+      setSearchResults(filtered)
+    } catch (e) {
+      console.error("Canteen search failed", e)
+      setSearchResults([])
+      setSearchError("No results found or an error occurred.")
+    } finally {
+      setSearchLoading(false)
+    }
+  }
+
+  // Auto search as user types (debounced)
+  useEffect(() => {
+    const q = searchQuery.trim()
+    if (!q) {
+      setSearchResults(null)
+      setSearchError(null)
+      setSearchLoading(false)
+      return
+    }
+    const t = setTimeout(() => {
+      runSearch(q)
+    }, 350)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery])
 
   if (loading) {
     return (
@@ -318,7 +391,10 @@ export default function CanteenPage() {
     const token = getToken()
     if (!token) return
     try {
-      await fetch(`${baseUrl}/api/user/cart/clearCart`, { method: "DELETE", headers: { Authorization: token } })
+      const res = await fetch(`${baseUrl}/api/user/cart/clearCart`, { method: "DELETE", headers: { Authorization: token } })
+      if (!res.ok) throw new Error(await res.text())
+      const json = await safeJson(res)
+      if (json && typeof json.code === "number" && json.code !== 1) throw new Error(String(json.message || "Failed to clear cart"))
     } catch {}
   }
 
@@ -328,6 +404,10 @@ export default function CanteenPage() {
     const url = `${baseUrl}/api/user/cart/addToCart?id=${encodeURIComponent(String(itemId))}&quantity=${encodeURIComponent(String(quantity))}`
     const res = await fetch(url, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
     if (!res.ok) throw new Error(await res.text())
+    const json = await safeJson(res)
+    if (json && typeof json.code === "number" && json.code !== 1) {
+      throw new Error(String(json.message || "Failed to add to cart"))
+    }
   }
 
   const updateBackendCartQuantity = async (itemId: number, quantity: number) => {
@@ -342,6 +422,21 @@ export default function CanteenPage() {
       body: JSON.stringify({ itemId, quantity }),
     })
     if (!res.ok) throw new Error(await res.text())
+    const json = await safeJson(res)
+    if (json && typeof json.code === "number" && json.code !== 1) {
+      throw new Error(String(json.message || "Failed to update cart"))
+    }
+  }
+
+  // Helper to safely parse JSON without throwing on empty responses
+  async function safeJson(res: Response): Promise<any | null> {
+    const ct = res.headers.get("content-type") || ""
+    if (!ct.includes("application/json")) return null
+    try {
+      return await res.json()
+    } catch {
+      return null
+    }
   }
 
   const syncLocalCartFromBackend = async () => {
@@ -430,7 +525,7 @@ export default function CanteenPage() {
       try {
         const res = await fetch(`${baseUrl}/api/user/cart/getCartItems`, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
         if (res.ok) {
-          const data = await res.json()
+          const data = await safeJson(res)
           const arr: any[] = Array.isArray(data?.data?.cart) ? data.data.cart : []
           const found = arr.find((it) => Number(it.ItemId) === Number(item.id))
           if (found) existingQty = Number(found.quantity ?? 1) || 1
@@ -439,8 +534,15 @@ export default function CanteenPage() {
       if (existingQty > 0) await updateBackendCartQuantity(Number(item.id), existingQty + 1)
       else await addBackendToCart(item.id, 1)
       await syncLocalCartFromBackend()
-    } catch {
-      // keep optimistic state
+    } catch (e: any) {
+      // Revert optimistic local change and notify user
+      if (current === 0) {
+        removeItem(item.id)
+      } else {
+        updateQuantity(item.id, current)
+      }
+      const msg = String(e?.message || "Could not add this item to cart.")
+      toast({ title: "Item not added", description: msg, variant: "destructive" as any })
     } finally {
       setBusyItemId(null)
     }
@@ -463,15 +565,25 @@ export default function CanteenPage() {
         await updateBackendCartQuantity(Number(item.id), next)
       } else {
         try {
-          await fetch(`${baseUrl}/api/user/cart/removeItemCart?id=${encodeURIComponent(String(item.id))}`, {
+          const res = await fetch(`${baseUrl}/api/user/cart/removeItemCart?id=${encodeURIComponent(String(item.id))}`, {
             method: "DELETE",
             headers: { Authorization: token },
           })
+          if (!res.ok) throw new Error(await res.text())
+          const json = await safeJson(res)
+          if (json && typeof json.code === "number" && json.code !== 1) throw new Error(String(json.message || "Failed to remove item"))
         } catch {}
       }
       await syncLocalCartFromBackend()
-    } catch {
-      // keep optimistic state
+    } catch (e: any) {
+      // Revert optimistic change
+      if (current === 0) {
+        // nothing to revert; item wasn't in cart
+      } else {
+        updateQuantity(item.id, current)
+      }
+      const msg = String(e?.message || "Could not update item quantity.")
+      toast({ title: "Cart not updated", description: msg, variant: "destructive" as any })
     } finally {
       setBusyItemId(null)
     }
@@ -528,7 +640,55 @@ export default function CanteenPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
+        {/* Inline search with a clear action button; no overlay suggestions to avoid overlap */}
+        <div className="mb-4">
+          <div className="flex gap-2">
+            <div className="flex-1">
+              <SearchBar
+                placeholder="Search this canteen’s menu..."
+                value={searchQuery}
+                onChange={(v) => {
+                  setSearchQuery(v)
+                  if (!v) setSearchResults(null)
+                }}
+                onSearch={runSearch}
+                showSuggestions={false}
+              />
+            </div>
+            <Button
+              variant="default"
+              size="icon"
+              aria-label="Search"
+              onClick={() => runSearch(searchQuery)}
+              disabled={searchLoading || !searchQuery.trim()}
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Search result header */}
+        {searchResults && (
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {searchLoading ? "Searching…" : `Results for "${searchQuery}" (${searchResults.length})`}
+            </p>
+            <button
+              className="text-xs underline text-primary"
+              onClick={() => {
+                setSearchQuery("")
+                setSearchResults(null)
+                setSearchError(null)
+              }}
+            >
+              Clear search
+            </button>
+          </div>
+        )}
+
+  {/* Hide tabs while searching to keep layout clean */}
+  {!searchResults && (
+  <Tabs defaultValue="all" value={activeTab} onValueChange={setActiveTab}>
           {/* Centered, horizontally scrollable categories for mobile */}
           <div className="-mx-4 mb-6 overflow-x-auto px-4 scroll-smooth snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none]">
             <style jsx>{`
@@ -571,15 +731,17 @@ export default function CanteenPage() {
               <div className="grid gap-4">
                 {displayedItems.map((item) => {
                   const localQty = items.find((i) => i.id === item.id)?.quantity || 0
+                  const unavailable = (item as any).available === false
                   return (
                     <FoodItemCard
                       key={item.id}
                       item={item}
                       quantity={localQty}
                       isLoading={busyItemId === item.id}
-                      onAddToCart={handleAddToCart}
-                      onIncrement={() => handleIncrement(item)}
-                      onDecrement={() => handleDecrement(item)}
+                      unavailable={unavailable}
+                      onAddToCart={unavailable ? undefined : handleAddToCart}
+                      onIncrement={unavailable ? undefined : () => handleIncrement(item)}
+                      onDecrement={unavailable ? undefined : () => handleDecrement(item)}
                     />
                   )
                 })}
@@ -608,6 +770,43 @@ export default function CanteenPage() {
             )}
           </TabsContent>
         </Tabs>
+        )}
+
+        {/* When searching, show results list using the same grid */}
+        {searchResults && (
+          <div className="mt-0">
+            {searchLoading ? (
+              <div className="grid gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-24 w-full animate-pulse rounded-lg bg-muted" />
+                ))}
+              </div>
+            ) : searchResults.length > 0 ? (
+              <div className="grid gap-4">
+                {displayedItems.map((item) => {
+                  const localQty = items.find((i) => i.id === item.id)?.quantity || 0
+                  const unavailable = (item as any).available === false
+                  return (
+                    <FoodItemCard
+                      key={item.id}
+                      item={item}
+                      quantity={localQty}
+                      isLoading={busyItemId === item.id}
+                      unavailable={unavailable}
+                      onAddToCart={unavailable ? undefined : handleAddToCart}
+                      onIncrement={unavailable ? undefined : () => handleIncrement(item)}
+                      onDecrement={unavailable ? undefined : () => handleDecrement(item)}
+                    />
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">{searchError || `No results for "${searchQuery}"`}</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <CartIcon />

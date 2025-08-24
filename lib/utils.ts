@@ -43,3 +43,6 @@ export function isOpenNow(fromTime?: string | null, toTime?: string | null): boo
     return nowMin >= startMin || nowMin <= endMin
   }
 }
+
+// Coupon feature flags (client-safe; NEXT_PUBLIC_ is inlined at build time)
+export const FREECANE_ENABLED = (process.env.NEXT_PUBLIC_FREECANE_ENABLED ?? "true").toLowerCase() !== "false"

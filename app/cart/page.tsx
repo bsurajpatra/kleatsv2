@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 import { Slider } from "@/components/ui/slider"
+import { FREECANE_ENABLED } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
 
 export default function CartPage() {
@@ -141,7 +142,7 @@ export default function CartPage() {
     const cat = (it.category || "").toString()
     return ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
   })
-  const freebiesCount = appliedCoupons.includes("FREECANE")
+  const freebiesCount = appliedCoupons.includes("FREECANE") && FREECANE_ENABLED
     ? items.reduce((sum, it) => {
         const cat = (it.category || "").toString()
         const match = ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
@@ -150,19 +151,27 @@ export default function CartPage() {
     : 0
 
   const toggleCoupon = (code: "GLUG" | "FREECANE") => {
+    if (code === "FREECANE" && !FREECANE_ENABLED) {
+      toast({ title: "Coupon disabled", description: "FREECANE is currently not available.", variant: "destructive" })
+      return appliedCoupons
+    }
     if (code === "FREECANE" && !hasEligibleFreecane) {
       toast({ title: "No eligible items", description: "FREECANE applies only to Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch items.", variant: "destructive" })
       return appliedCoupons
     }
     setAppliedCoupons((prev) => {
-      const next = prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-      if (!prev.includes(code)) {
-        setFlashCoupon(code)
-        setCelebrate(true)
-        setTimeout(() => setFlashCoupon(null), 900)
-        setTimeout(() => setCelebrate(false), 1200)
+      // Enforce a single coupon at a time
+      const alreadyActive = prev.length === 1 && prev[0] === code
+      if (alreadyActive) {
+        // Toggling the same code removes it
+        return []
       }
-      return next
+      // Applying a different coupon replaces any existing one
+      setFlashCoupon(code)
+      setCelebrate(true)
+      setTimeout(() => setFlashCoupon(null), 900)
+      setTimeout(() => setCelebrate(false), 1200)
+      return [code]
     })
   }
 
@@ -173,7 +182,12 @@ export default function CartPage() {
       toast({ title: "Invalid coupon", description: "This code isn’t supported.", variant: "destructive" })
       return
     }
+    if (code === "FREECANE" && !FREECANE_ENABLED) {
+      toast({ title: "Coupon disabled", description: "FREECANE is currently not available.", variant: "destructive" })
+      return
+    }
     if (appliedCoupons.includes(code)) {
+      // Code already applied; nothing to change
       toast({ title: "Already applied", description: `${code} is already in use.` })
       return
     }
@@ -385,9 +399,9 @@ export default function CartPage() {
                 </div>
 
                 {/* Static coupon chips */}
-                <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2">
                   <AnimatePresence>
-                    {["FREECANE", "GLUG"].map((code, idx) => {
+          {[...(FREECANE_ENABLED ? ["FREECANE"] as const : []), "GLUG" as const].map((code, idx) => {
                       const active = appliedCoupons.includes(code)
                       return (
                         <motion.div
