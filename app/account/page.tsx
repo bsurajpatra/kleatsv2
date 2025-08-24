@@ -297,15 +297,6 @@ export default function AccountPage() {
                 </div>
               </RadioGroup>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-student-id">Student ID</Label>
-              <Input
-                id="edit-student-id"
-                value={editStudentId}
-                onChange={(e) => setEditStudentId(e.target.value)}
-                placeholder="Your student ID"
-              />
-            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditProfileOpen(false)}>
