@@ -97,15 +97,15 @@ export default function ContactUs() {
                 <h3 className="text-base font-semibold">Join us or contribute</h3>
               </div>
               <p className="text-sm text-muted-foreground">
-                To become a member or contribute to KL-Eats, visit
+                To become a member or contribute to KL-Eats, fill this
                 {" "}
                 <a
-                  href="https://kleats.in/member"
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSdb0kCwHtGsy3gtJtGeVuylQ-yeCJdR9kjb5HgcHJc9ADyagQ/viewform"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary underline underline-offset-4"
                 >
-                  kleats.in/member
+                  recruitment form
                 </a>
                 {" "}or visit Room C424.
               </p>
@@ -126,7 +126,7 @@ export default function ContactUs() {
                 <div className="rounded-lg border p-4">
                   <p className="text-xs uppercase text-muted-foreground mb-1">Email</p>
                   <a href="mailto:support@kleats.in" className="text-sm text-foreground hover:text-primary">
-                    support@kleats.in
+                    admin@kleats.in
                   </a>
                 </div>
                 <div className="rounded-lg border p-4">
