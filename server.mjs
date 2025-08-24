@@ -22,6 +22,7 @@ const CERT_FULLCHAIN_PATH = process.env.SSL_CERT_PATH || '/etc/letsencrypt/live/
 // Forward to backend (origin): POST http://<BACKEND_HOST>:<PORT>/cashfree/webhook
 const CASHFREE_WEBHOOK_PATH = process.env.CASHFREE_WEBHOOK_PATH || '/cashfree/webhook'
 const BACKEND_ORIGIN = process.env.BACKEND_ORIGIN || process.env.API_BASE_URL || 'http://127.0.0.1:3000'
+const ENABLE_SERVER_WEBHOOK_PROXY = String(process.env.ENABLE_SERVER_WEBHOOK_PROXY || '').toLowerCase() === 'true'
 
 // Helper: Redirect HTTP -> HTTPS
 function createHttpRedirectServer() {
@@ -60,7 +61,7 @@ app.prepare().then(() => {
 			const method = req.method || 'GET'
 			const url = req.url || '/'
 			const pathname = url.split('?')[0]
-			if (method === 'POST' && pathname === CASHFREE_WEBHOOK_PATH) {
+			if (ENABLE_SERVER_WEBHOOK_PROXY && method === 'POST' && pathname === CASHFREE_WEBHOOK_PATH) {
 				// Parse backend origin
 				let target
 				try { target = new URL(BACKEND_ORIGIN) } catch (e) {
