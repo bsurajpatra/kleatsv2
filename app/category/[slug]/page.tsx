@@ -20,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import CartIcon from "@/components/cart-icon"
+import { isOpenNow } from "@/lib/utils"
 
 type RawItem = {
   ItemId: number
@@ -55,6 +56,13 @@ function buildImageUrl(path?: string | null) {
   if (!path) return "/placeholder.svg"
   const base = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
   return `${base}${path.startsWith("/") ? path : `/${path}`}`
+}
+
+function toHHMM(t?: string | null): string | undefined {
+  if (!t) return undefined
+  const s = String(t).trim()
+  if (s.length >= 5 && s[2] === ":") return s.slice(0, 5)
+  return s
 }
 
 export default function CategoryPage() {
@@ -96,9 +104,9 @@ export default function CategoryPage() {
           cache: "no-store",
         })
         if (!res.ok) throw new Error(`Items HTTP ${res.status}`)
-        const json: ItemsResponse = await res.json()
-        if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed items fetch")
-  const avail = json.data.filter((it) => it.ava !== false)
+  const json: ItemsResponse = await res.json()
+  if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed items fetch")
+  const avail = Array.isArray(json.data) ? json.data : []
         const uniqueCIds = Array.from(new Set(avail.map((it) => it.canteenId)))
         // fetch canteen names
         const nameEntries = await Promise.all(
@@ -114,16 +122,25 @@ export default function CategoryPage() {
           }),
         )
         const nameMap = Object.fromEntries(nameEntries) as Record<number, string>
-  const mapped = avail.map((it) => ({
-          id: it.ItemId,
-          name: it.ItemName,
-          price: it.Price,
-          image: buildImageUrl(it.ImagePath || undefined),
-          category: it.category,
-          description: it.Description,
-          canteenId: it.canteenId,
-          canteen: nameMap[it.canteenId] || `Canteen ${it.canteenId}`,
-        }))
+        const mapped = avail.map((it) => {
+          const st = toHHMM(it.startTime)
+          const et = toHHMM(it.endTime)
+          const open = isOpenNow(st, et)
+          const available = (it.ava !== false) && (open !== false)
+          return {
+            id: it.ItemId,
+            name: it.ItemName,
+            price: it.Price,
+            image: buildImageUrl(it.ImagePath || undefined),
+            category: it.category,
+            description: it.Description,
+            canteenId: it.canteenId,
+            canteen: nameMap[it.canteenId] || `Canteen ${it.canteenId}`,
+            startTime: st,
+            endTime: et,
+            available,
+          }
+        })
   if (mounted) setCategoryItems(mapped)
       } catch (e) {
         console.error("Category load failed", e)
@@ -411,9 +428,10 @@ export default function CategoryPage() {
                   item={item}
                   quantity={cartItems.find((i) => i.id === item.id)?.quantity || 0}
                   isLoading={busyItemId === item.id}
-                  onAddToCart={() => handleAddToCart(item)}
-                  onIncrement={() => handleIncrement(item)}
-                  onDecrement={() => handleDecrement(item)}
+                  unavailable={(item as any).available === false}
+                  onAddToCart={(item as any).available === false ? undefined : () => handleAddToCart(item)}
+                  onIncrement={(item as any).available === false ? undefined : () => handleIncrement(item)}
+                  onDecrement={(item as any).available === false ? undefined : () => handleDecrement(item)}
                 />
               </motion.div>
             ))
