@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense } from "react"
 import { useSearchParams } from "next/navigation"
-import { Search, SlidersHorizontal } from "lucide-react"
+import { Search, SlidersHorizontal, ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
@@ -21,6 +21,7 @@ import { motion } from "framer-motion"
 import { useCart } from "@/hooks/use-cart"
 import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -407,6 +408,11 @@ function SearchPageContent() {
     <main className="min-h-screen pb-24 page-transition">
       <div className="sticky top-0 z-10 bg-background p-4 shadow-sm">
         <div className="flex items-center space-x-2">
+          <Link href="/">
+            <Button variant="ghost" size="icon" aria-label="Back to home">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
           <div className="flex-1">
             <SearchBar value={query} onChange={setQuery} onSearch={handleSearch} showSuggestions={false} />
           </div>
