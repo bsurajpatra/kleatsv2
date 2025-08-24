@@ -65,22 +65,15 @@ export default function CanteensPage() {
 
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 
-  const openOrUnknown = useMemo(() => {
-    return data.filter((c) => {
-      const open = isOpenNow(c.fromTime, c.ToTime)
-      return open === true || open === null
-    })
-  }, [data])
-
   const filteredCanteens = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    if (!q) return openOrUnknown
-    return openOrUnknown.filter((c) => {
+    if (!q) return data
+    return data.filter((c) => {
       const name = (c.CanteenName || "").toLowerCase()
       const loc = (c.Location || "").toLowerCase()
       return name.includes(q) || loc.includes(q)
     })
-  }, [openOrUnknown, searchQuery])
+  }, [data, searchQuery])
 
   return (
     <main className="min-h-screen pb-24 page-transition">
@@ -107,14 +100,13 @@ export default function CanteensPage() {
             ))}
           </div>
         ) : filteredCanteens.length === 0 ? (
-          <div className="text-center text-sm text-muted-foreground">No canteens available right now.</div>
+          <div className="text-center text-sm text-muted-foreground">No canteens match your search.</div>
         ) : (
           <div className="grid gap-4">
             {filteredCanteens.map((canteen, index) => {
-              const hoursUnknown = isOpenNow(canteen.fromTime, canteen.ToTime) === null
-              const badgeText = hoursUnknown
-                ? "Hours N/A"
-                : "Open Now"
+              const openStatus = isOpenNow(canteen.fromTime, canteen.ToTime)
+              const closed = openStatus === false
+              const badgeText = openStatus === true ? "Open Now" : openStatus === false ? "Not available" : "Hours N/A"
               const imgSrc = canteen.poster
                 ? `${baseUrl}${canteen.poster.startsWith("/") ? canteen.poster : `/${canteen.poster}`}`
                 : "/placeholder.svg"
@@ -129,8 +121,8 @@ export default function CanteensPage() {
                     <Card className="card-hover overflow-hidden">
                       <CardContent className="p-0">
                         <div className="relative h-40">
-                          <Image src={imgSrc} alt={canteen.CanteenName} fill className="object-cover" />
-                          <Badge className="absolute right-2 top-2 bg-primary">{badgeText}</Badge>
+                          <Image src={imgSrc} alt={canteen.CanteenName} fill className={`object-cover${closed ? " grayscale opacity-70" : ""}`} />
+                          <Badge className={`absolute right-2 top-2 shadow-md ${openStatus === true ? "bg-green-500 text-white" : "bg-muted text-foreground"}`}>{badgeText}</Badge>
                         </div>
                         <div className="p-4">
                           <h3 className="text-lg font-semibold">{canteen.CanteenName}</h3>
