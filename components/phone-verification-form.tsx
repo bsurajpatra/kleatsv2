@@ -15,8 +15,6 @@ export default function PhoneVerificationForm() {
   const [role, setRole] = useState<"student" | "staff">("student")
   // Backend expects DayOrHos to be either "hostel" or "DayScoller" (note spelling)
   const [dayOrHos, setDayOrHos] = useState<"hostel" | "DayScoller">("hostel")
-  const [studentId, setStudentId] = useState("")
-  const [empId, setEmpId] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   
@@ -30,14 +28,6 @@ export default function PhoneVerificationForm() {
     
     if (!phoneNo || !/^\d{10}$/.test(phoneNo)) {
       errors.phoneNo = "Please enter a 10-digit phone number"
-    }
-    
-    if (role === "student" && !studentId) {
-      errors.studentId = "Student ID is required"
-    }
-    
-    if (role === "staff" && !empId) {
-      errors.empId = "Employee ID is required"
     }
     
     setFormErrors(errors)
@@ -77,7 +67,6 @@ export default function PhoneVerificationForm() {
         phoneNo,
         role,
         DayOrHos: normalizedDayOrHos,
-        ...(role === "student" ? { studentId } : { EmpId: empId }),
       }
       
       console.log("Submitting payload:", payload)
@@ -228,35 +217,7 @@ export default function PhoneVerificationForm() {
               </RadioGroup>
             </div>
             
-            {role === "student" && (
-              <div className="space-y-2">
-                <Label htmlFor="studentId">Student ID</Label>
-                <Input
-                  id="studentId"
-                  placeholder="Enter your student ID"
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                />
-                {formErrors.studentId && (
-                  <p className="text-sm text-destructive">{formErrors.studentId}</p>
-                )}
-              </div>
-            )}
-            
-            {role === "staff" && (
-              <div className="space-y-2">
-                <Label htmlFor="empId">Employee ID</Label>
-                <Input
-                  id="empId"
-                  placeholder="Enter your employee ID"
-                  value={empId}
-                  onChange={(e) => setEmpId(e.target.value)}
-                />
-                {formErrors.empId && (
-                  <p className="text-sm text-destructive">{formErrors.empId}</p>
-                )}
-              </div>
-            )}
+
           </CardContent>
           
           <CardFooter>
