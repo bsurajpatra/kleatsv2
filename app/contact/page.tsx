@@ -13,20 +13,42 @@ export default function ContactUs() {
     <main className="min-h-screen page-transition">
       {/* Sticky Header aligned with app */}
       <div className="sticky top-0 z-10 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-        <div className="container px-4 py-6 flex items-center">
-          <Link 
-            href="/" 
-            className="inline-flex items-center gap-2 text-sm text-primary hover:underline transition-colors whitespace-nowrap px-3 py-2 cursor-pointer -ml-4"
-          >
-            ← Back to Home
-          </Link>
-          <div className="flex-1 flex items-center justify-center gap-3" style={{ transform: 'translateX(-90px)' }}>
-            <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <Mail className="h-5 w-5" />
+        <div className="container px-4 py-4 md:py-6">
+          {/* Mobile Layout - Stacked */}
+          <div className="md:hidden space-y-3">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 text-sm text-primary hover:underline transition-colors whitespace-nowrap"
+            >
+              ← Back to Home
+            </Link>
+            <div className="flex items-center justify-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <Mail className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold leading-tight">Contact Us</h1>
+                <p className="text-xs text-muted-foreground">Support & Feedback Center</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-xl font-semibold leading-tight">Contact Us</h1>
-              <p className="text-xs text-muted-foreground">Support & Feedback Center</p>
+          </div>
+          
+          {/* Desktop Layout - Side by side */}
+          <div className="hidden md:flex items-center">
+            <Link 
+              href="/" 
+              className="inline-flex items-center gap-2 text-sm text-primary hover:underline transition-colors whitespace-nowrap px-3 py-2 cursor-pointer"
+            >
+              ← Back to Home
+            </Link>
+            <div className="flex-1 flex items-center justify-center gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                <Mail className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="text-xl font-semibold leading-tight">Contact Us</h1>
+                <p className="text-xs text-muted-foreground">Support & Feedback Center</p>
+              </div>
             </div>
           </div>
         </div>
