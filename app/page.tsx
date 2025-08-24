@@ -20,6 +20,7 @@ import Link from "next/link"
 import SearchBar from "@/components/search-bar"
 import { isOpenNow } from "@/lib/utils"
 import LockOverlay from "@/components/lock-overlay"
+import CartIcon from "@/components/cart-icon"
 // import ContactUs from "./contact/page"
 
 export default function Home() {
@@ -717,6 +718,7 @@ export default function Home() {
 
       <Footer />
       <BottomNavigation />
+  {isAuthenticated && <CartIcon />}
     </main>
     </>
   )
