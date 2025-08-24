@@ -13,6 +13,7 @@ import { useCart } from "@/hooks/use-cart"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import SearchBar from "@/components/search-bar"
 import { Button } from "@/components/ui/button"
+import { toast } from "@/hooks/use-toast"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -374,7 +375,10 @@ export default function CanteenPage() {
     const token = getToken()
     if (!token) return
     try {
-      await fetch(`${baseUrl}/api/user/cart/clearCart`, { method: "DELETE", headers: { Authorization: token } })
+      const res = await fetch(`${baseUrl}/api/user/cart/clearCart`, { method: "DELETE", headers: { Authorization: token } })
+      if (!res.ok) throw new Error(await res.text())
+      const json = await safeJson(res)
+      if (json && typeof json.code === "number" && json.code !== 1) throw new Error(String(json.message || "Failed to clear cart"))
     } catch {}
   }
 
@@ -384,6 +388,10 @@ export default function CanteenPage() {
     const url = `${baseUrl}/api/user/cart/addToCart?id=${encodeURIComponent(String(itemId))}&quantity=${encodeURIComponent(String(quantity))}`
     const res = await fetch(url, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
     if (!res.ok) throw new Error(await res.text())
+    const json = await safeJson(res)
+    if (json && typeof json.code === "number" && json.code !== 1) {
+      throw new Error(String(json.message || "Failed to add to cart"))
+    }
   }
 
   const updateBackendCartQuantity = async (itemId: number, quantity: number) => {
@@ -398,6 +406,21 @@ export default function CanteenPage() {
       body: JSON.stringify({ itemId, quantity }),
     })
     if (!res.ok) throw new Error(await res.text())
+    const json = await safeJson(res)
+    if (json && typeof json.code === "number" && json.code !== 1) {
+      throw new Error(String(json.message || "Failed to update cart"))
+    }
+  }
+
+  // Helper to safely parse JSON without throwing on empty responses
+  async function safeJson(res: Response): Promise<any | null> {
+    const ct = res.headers.get("content-type") || ""
+    if (!ct.includes("application/json")) return null
+    try {
+      return await res.json()
+    } catch {
+      return null
+    }
   }
 
   const syncLocalCartFromBackend = async () => {
@@ -486,7 +509,7 @@ export default function CanteenPage() {
       try {
         const res = await fetch(`${baseUrl}/api/user/cart/getCartItems`, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
         if (res.ok) {
-          const data = await res.json()
+          const data = await safeJson(res)
           const arr: any[] = Array.isArray(data?.data?.cart) ? data.data.cart : []
           const found = arr.find((it) => Number(it.ItemId) === Number(item.id))
           if (found) existingQty = Number(found.quantity ?? 1) || 1
@@ -495,8 +518,15 @@ export default function CanteenPage() {
       if (existingQty > 0) await updateBackendCartQuantity(Number(item.id), existingQty + 1)
       else await addBackendToCart(item.id, 1)
       await syncLocalCartFromBackend()
-    } catch {
-      // keep optimistic state
+    } catch (e: any) {
+      // Revert optimistic local change and notify user
+      if (current === 0) {
+        removeItem(item.id)
+      } else {
+        updateQuantity(item.id, current)
+      }
+      const msg = String(e?.message || "Could not add this item to cart.")
+      toast({ title: "Item not added", description: msg, variant: "destructive" as any })
     } finally {
       setBusyItemId(null)
     }
@@ -519,15 +549,25 @@ export default function CanteenPage() {
         await updateBackendCartQuantity(Number(item.id), next)
       } else {
         try {
-          await fetch(`${baseUrl}/api/user/cart/removeItemCart?id=${encodeURIComponent(String(item.id))}`, {
+          const res = await fetch(`${baseUrl}/api/user/cart/removeItemCart?id=${encodeURIComponent(String(item.id))}`, {
             method: "DELETE",
             headers: { Authorization: token },
           })
+          if (!res.ok) throw new Error(await res.text())
+          const json = await safeJson(res)
+          if (json && typeof json.code === "number" && json.code !== 1) throw new Error(String(json.message || "Failed to remove item"))
         } catch {}
       }
       await syncLocalCartFromBackend()
-    } catch {
-      // keep optimistic state
+    } catch (e: any) {
+      // Revert optimistic change
+      if (current === 0) {
+        // nothing to revert; item wasn't in cart
+      } else {
+        updateQuantity(item.id, current)
+      }
+      const msg = String(e?.message || "Could not update item quantity.")
+      toast({ title: "Cart not updated", description: msg, variant: "destructive" as any })
     } finally {
       setBusyItemId(null)
     }
