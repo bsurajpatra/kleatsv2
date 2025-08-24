@@ -31,7 +31,7 @@ export default function CartIcon() {
       <Button
         variant="default"
         size="lg"
-        className={`fixed bottom-20 right-4 z-20 h-16 w-auto rounded-full shadow-lg flex items-center gap-2 px-4 ${isAnimating ? "pulse" : ""}`}
+  className={`fixed bottom-20 right-4 z-20 h-16 w-auto rounded-full shadow-lg flex items-center gap-2 px-4 ${isAnimating ? "pulse" : ""} bg-primary/60 hover:bg-primary/75 backdrop-blur-md border border-white/20`}
       >
         <ShoppingBag className="h-6 w-6" />
         <div className="flex flex-col items-start">
