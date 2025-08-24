@@ -160,14 +160,18 @@ export default function CartPage() {
       return appliedCoupons
     }
     setAppliedCoupons((prev) => {
-      const next = prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]
-      if (!prev.includes(code)) {
-        setFlashCoupon(code)
-        setCelebrate(true)
-        setTimeout(() => setFlashCoupon(null), 900)
-        setTimeout(() => setCelebrate(false), 1200)
+      // Enforce a single coupon at a time
+      const alreadyActive = prev.length === 1 && prev[0] === code
+      if (alreadyActive) {
+        // Toggling the same code removes it
+        return []
       }
-      return next
+      // Applying a different coupon replaces any existing one
+      setFlashCoupon(code)
+      setCelebrate(true)
+      setTimeout(() => setFlashCoupon(null), 900)
+      setTimeout(() => setCelebrate(false), 1200)
+      return [code]
     })
   }
 
@@ -183,6 +187,7 @@ export default function CartPage() {
       return
     }
     if (appliedCoupons.includes(code)) {
+      // Code already applied; nothing to change
       toast({ title: "Already applied", description: `${code} is already in use.` })
       return
     }

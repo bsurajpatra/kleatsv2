@@ -11,8 +11,7 @@ import Footer from "@/components/footer"
 import Logo from "@/components/logo"
 import ThemeToggle from "@/components/theme-toggle"
 import { motion } from "framer-motion"
-import { FREECANE_ENABLED } from "@/lib/utils"
-import { Star, Clock, Utensils, Copy, Check, ArrowRight, CupSoda, Receipt, Info } from "lucide-react"
+import { Star, Clock, Utensils, Copy, Check, ArrowRight, CupSoda, Info } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
@@ -348,8 +347,37 @@ export default function Home() {
                   },
                 }}
               >
+                {/* Limited Time Offer card to keep the section balanced and attractive */}
+                <motion.div
+                  variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
+                  className="rounded-xl border bg-card/60 backdrop-blur-sm overflow-hidden snap-start min-w-[85%] sm:min-w-0"
+                >
+                  <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-br from-primary/10 to-transparent">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+                      <Star className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold leading-tight clamp-2">Limited-time campus specials</p>
+                      <p className="text-[11px] text-muted-foreground clamp-2">Hot picks, fresh deals — updated weekly. Don’t miss out.</p>
+                    </div>
+                  </div>
+                  <div className="p-3 pt-2 flex items-center justify-between">
+                    <Badge variant="secondary" className="uppercase tracking-wide">Limited Time</Badge>
+                    <Link href="#popular" passHref>
+                      <button className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs sm:text-sm hover:bg-secondary">
+                        Shop now
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </button>
+                    </Link>
+                  </div>
+                </motion.div>
+
+                {/* GLUG coupon temporarily disabled — original block kept for reference */}
+                {/**
+                <motion.div ...> ...GLUG content... </motion.div>
+                **/}
+
                 {/* Coupon: Free Sugarcane with every meal (auto-applies) */}
-                {FREECANE_ENABLED && (
                 <motion.div
                   variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
                   className="rounded-xl border bg-card/60 backdrop-blur-sm overflow-hidden snap-start min-w-[85%] sm:min-w-0"
@@ -400,62 +428,6 @@ export default function Home() {
                             <li>Subject to availability. While supplies last.</li>
                           </ul>
                           <p className="text-xs text-muted-foreground">Full terms may be updated. Check the cart before payment.</p>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </motion.div>
-                )}
-
-                {/* Coupon: GLUG – removes all service charges */}
-                <motion.div
-                  variants={{ hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } }}
-                  className="rounded-xl border bg-card/60 backdrop-blur-sm overflow-hidden snap-start min-w-[85%] sm:min-w-0"
-                >
-                  <div className="flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-br from-accent/20 to-transparent">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                      <Receipt className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-semibold leading-tight clamp-2">GLUG — zero service charges</p>
-                      <p className="text-[11px] text-muted-foreground clamp-2">Waives platform service charges at checkout. Taxes may still apply.</p>
-                    </div>
-                  </div>
-                  <div className="p-3 pt-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <code className="rounded bg-muted px-2.5 py-1 text-xs sm:text-sm font-mono font-bold">GLUG</code>
-                      <button
-                        onClick={() => copyCoupon("GLUG", 201)}
-                        className="inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs sm:text-sm hover:bg-secondary"
-                        aria-label="Copy coupon GLUG"
-                      >
-                        {copiedOffer === 201 ? (<><Check className="h-4 w-4 text-green-500" />Copied</>) : (<><Copy className="h-4 w-4" />Copy</>)}
-                      </button>
-                    </div>
-                    <Dialog>
-                      <DialogTrigger
-                        className="inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-xs hover:bg-secondary"
-                        aria-label="View details"
-                      >
-                        <Info className="h-3 w-3" />
-                        <span className="hidden md:inline">Details</span>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-md">
-                        <DialogHeader>
-                          <DialogTitle>GLUG — Service charge waiver</DialogTitle>
-                          <DialogDescription>
-                            Enter <strong>GLUG</strong> at checkout to remove all service charges from your order total.
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="text-sm space-y-2">
-                          <ul className="list-disc pl-5 space-y-1">
-                            <li>Valid for a limited time.</li>
-                            <li>Removes platform service charges. Government taxes may still apply.</li>
-                            <li>Not applicable to Parcel charges or tips (if any).</li>
-                            <li>Can be combined with other service-charge waivers.</li>
-                            <li>Applies only when code is entered before payment.</li>
-                          </ul>
-                          <p className="text-xs text-muted-foreground">If the waiver doesn’t reflect, re-apply the code on the payment step.</p>
                         </div>
                       </DialogContent>
                     </Dialog>
