@@ -37,6 +37,15 @@ export default function CartPage() {
   const [celebrate, setCelebrate] = useState(false)
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
 
+  // FREECANE daily start time: 3:15 PM local time
+  const isAfterFreecaneStart = () => {
+    const now = new Date()
+    const h = now.getHours()
+    const m = now.getMinutes()
+    return h > 15 || (h === 15 && m >= 15)
+  }
+  const FREECANE_TIME_OK = isAfterFreecaneStart()
+
   // Redirect to login only after auth state is initialized, and preserve return URL
   useEffect(() => {
     if (!isInitialized) return
@@ -142,7 +151,7 @@ export default function CartPage() {
     const cat = (it.category || "").toString()
     return ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
   })
-  const freebiesCount = appliedCoupons.includes("FREECANE") && FREECANE_ENABLED
+  const freebiesCount = appliedCoupons.includes("FREECANE") && FREECANE_ENABLED && FREECANE_TIME_OK
     ? items.reduce((sum, it) => {
         const cat = (it.category || "").toString()
         const match = ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
@@ -153,6 +162,10 @@ export default function CartPage() {
   const toggleCoupon = (code: "GLUG" | "FREECANE") => {
     if (code === "FREECANE" && !FREECANE_ENABLED) {
       toast({ title: "Coupon disabled", description: "FREECANE is currently not available.", variant: "destructive" })
+      return appliedCoupons
+    }
+    if (code === "FREECANE" && !FREECANE_TIME_OK) {
+      toast({ title: "Available after 3:30 PM", description: "You can apply FREECANE after 3:30 PM.", variant: "destructive" })
       return appliedCoupons
     }
     if (code === "FREECANE" && !hasEligibleFreecane) {
@@ -184,6 +197,10 @@ export default function CartPage() {
     }
     if (code === "FREECANE" && !FREECANE_ENABLED) {
       toast({ title: "Coupon disabled", description: "FREECANE is currently not available.", variant: "destructive" })
+      return
+    }
+    if (code === "FREECANE" && !FREECANE_TIME_OK) {
+      toast({ title: "Available after 3:30 PM", description: "FREECANE can be applied after 3:30 PM.", variant: "destructive" })
       return
     }
     if (appliedCoupons.includes(code)) {
@@ -400,7 +417,7 @@ export default function CartPage() {
                 {/* Static coupon chips */}
         <div className="flex flex-wrap gap-2">
                   <AnimatePresence>
-          {[...(FREECANE_ENABLED ? ["FREECANE"] as const : []), "GLUG" as const].map((code, idx) => {
+          {[...(FREECANE_ENABLED && FREECANE_TIME_OK ? ["FREECANE"] as const : []), "GLUG" as const].map((code, idx) => {
                       const active = appliedCoupons.includes(code)
                       return (
                         <motion.div
@@ -440,7 +457,7 @@ export default function CartPage() {
                   </AnimatePresence>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  GLUG waives the Gateway Charge. FREECANE adds a free Sugarcane juice for each applicable item (Starters, FriedRice, Pizza, Burgers, Lunch).
+                  GLUG waives the Gateway Charge. FREECANE (available after 3:30 PM) adds a free Sugarcane juice for each applicable item (Starters, FriedRice, Pizza, Burgers, Lunch).
                 </p>
                 <AnimatePresence>
                   {freebiesCount > 0 && (

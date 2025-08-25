@@ -389,7 +389,7 @@ export default function Home() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold leading-tight clamp-2">Free Sugarcane with every meal</p>
                       <p className="text-[11px] text-muted-foreground clamp-2">
-                        Enter FREECANE at checkout. One complimentary sugarcane with eligible meal combos. Limited time.
+                        Enter FREECANE at checkout (available after 3:30 PM). One complimentary sugarcane with eligible meal combos. Limited time.
                       </p>
                     </div>
                   </div>
@@ -416,13 +416,13 @@ export default function Home() {
                         <DialogHeader>
                           <DialogTitle>Free Sugarcane with every meal</DialogTitle>
                           <DialogDescription>
-                            Enter <strong>FREECANE</strong> at checkout to enjoy one complimentary sugarcane juice with every eligible item.
+                            Enter <strong>FREECANE</strong> at checkout after <strong>3:30 PM</strong> to enjoy one complimentary sugarcane juice with every eligible item.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="text-sm space-y-2">
                           <ul className="list-disc pl-5 space-y-1">
                             <li>Code must be entered before payment and qualifying items must be in cart.</li>
-                            <li>Eligible items: Starters(veg & Non-Veg), Fried Rice, Pizza, Burger</li>
+                            <li>Eligible items: Starters (Veg & Non-Veg), Fried Rice, Pizza, Burgers, Lunch</li>
                             <li>One free sugarcane per item. Cannot be exchanged or transferred.</li>
                             <li>Not valid with other “free item” promotions unless stated.</li>
                             <li>Subject to availability. While supplies last.</li>
