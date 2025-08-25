@@ -146,7 +146,7 @@ export default function CartPage() {
   // Gateway charge: ceil of 3% of the total (including packaging)
   const gatewayCharge = Math.ceil(totalPrice * 0.03)
   const effectiveGateway = appliedCoupons.includes("GLUG") ? 0 : gatewayCharge
-  const ELIGIBLE_FREECANE = ["Starters", "FriedRice", "Pizza", "Burgers", "Lunch"]
+  const ELIGIBLE_FREECANE = ["Starters", "FriedRice", "Noodles", "Pizza", "Burgers", "Lunch"]
   const hasEligibleFreecane = items.some((it) => {
     const cat = (it.category || "").toString()
     return ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
@@ -169,7 +169,7 @@ export default function CartPage() {
       return appliedCoupons
     }
     if (code === "FREECANE" && !hasEligibleFreecane) {
-  toast({ title: "No eligible items", description: "FREECANE applies only to Starters, FriedRice, Pizza, Burgers, or Lunch items.", variant: "destructive" })
+  toast({ title: "No eligible items", description: "FREECANE applies only to Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch items.", variant: "destructive" })
       return appliedCoupons
     }
     setAppliedCoupons((prev) => {
@@ -209,7 +209,7 @@ export default function CartPage() {
       return
     }
     if (code === "FREECANE" && !hasEligibleFreecane) {
-  toast({ title: "No eligible items", description: "Add a Starters, FriedRice, Pizza, Burgers, or Lunch item to use FREECANE.", variant: "destructive" })
+  toast({ title: "No eligible items", description: "Add a Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch item to use FREECANE.", variant: "destructive" })
       return
     }
     toggleCoupon(code as "GLUG" | "FREECANE")
@@ -457,7 +457,7 @@ export default function CartPage() {
                   </AnimatePresence>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  GLUG waives the Gateway Charge. FREECANE (available after 3:30 PM) adds a free Sugarcane juice for each applicable item (Starters, FriedRice, Pizza, Burgers, Lunch).
+                  GLUG waives the Gateway Charge. FREECANE (available after 3:30 PM) adds a free Sugarcane juice for each applicable item (Starters, FriedRice, Noodles, Pizza, Burgers, Lunch).
                 </p>
                 <AnimatePresence>
                   {freebiesCount > 0 && (
