@@ -29,6 +29,8 @@ export default function CartPage() {
   const [pickupMode, setPickupMode] = useState<"asap" | "slot" | "custom">("asap")
   const [selectedSlot, setSelectedSlot] = useState<string>("")
   const [customMinutes, setCustomMinutes] = useState<number>(20)
+  // Allow scheduling up to 5 hours (300 minutes) ahead
+  const MAX_AHEAD_MINUTES = 300
   const [isProcessing, setIsProcessing] = useState(false)
   const [unavailableMap, setUnavailableMap] = useState<Record<number, string>>({})
   const [appliedCoupons, setAppliedCoupons] = useState<string[]>([])
@@ -77,14 +79,15 @@ export default function CartPage() {
     router.push(`/payment?${qs.toString()}`)
   }
 
-  // Generate pickup time options (8 x 15-min slots starting from next quarter-hour)
+  // Generate pickup time options (15-min slots up to MAX_AHEAD_MINUTES starting from next quarter-hour)
   const generateTimeOptions = () => {
     const options: { value: string; label: string }[] = []
     const now = new Date()
     const minutes = now.getMinutes()
     const offset = (15 - (minutes % 15)) % 15
     const firstIncrement = offset === 0 ? 15 : offset
-    for (let i = 0; i < 8; i++) {
+    const slots = Math.floor(MAX_AHEAD_MINUTES / 15)
+    for (let i = 0; i < slots; i++) {
       const time = new Date(now.getTime() + (firstIncrement + i * 15) * 60000)
       const hours = time.getHours()
       const mins = time.getMinutes()
@@ -523,7 +526,7 @@ export default function CartPage() {
                       <span className="text-sm text-muted-foreground">Minutes from now</span>
                       <span className="text-sm font-medium">{customMinutes} min</span>
                     </div>
-                    <Slider value={[customMinutes]} onValueChange={(val) => setCustomMinutes(val[0] as number)} min={5} max={120} step={5} />
+                    <Slider value={[customMinutes]} onValueChange={(val) => setCustomMinutes(val[0] as number)} min={5} max={MAX_AHEAD_MINUTES} step={5} />
                     <div className="mt-1 flex items-center gap-2 rounded-md border p-3">
                       <Clock className="h-4 w-4" />
                       <span>{items.some((i) => !!i.packaging) ? "Pickup" : "Dine-in"} at {formatMinutesFromNow(customMinutes)}</span>
