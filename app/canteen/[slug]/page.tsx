@@ -148,6 +148,7 @@ export default function CanteenPage() {
   const [searchResults, setSearchResults] = useState<RawItem[] | null>(null)
   const [searchLoading, setSearchLoading] = useState<boolean>(false)
   const [searchError, setSearchError] = useState<string | null>(null)
+  const PAGE_LIMIT = 50
 
   // Remember this canteen so other pages can navigate back
   useEffect(() => {
@@ -168,7 +169,7 @@ export default function CanteenPage() {
         const [dRes, cRes, iRes] = await Promise.all([
           fetch(`${base}/api/explore/canteen/details/${canteenId}`, { cache: "no-store" }),
           fetch(`${base}/api/explore/canteen/categories/${canteenId}`, { cache: "no-store" }),
-          fetch(`${base}/api/explore/items?canteen_id=${encodeURIComponent(canteenId)}&offset=0`, {
+          fetch(`${base}/api/explore/items?canteen_id=${encodeURIComponent(canteenId)}&offset=0&limit=${encodeURIComponent(String(PAGE_LIMIT))}`, {
             cache: "no-store",
           }),
         ])
@@ -184,11 +185,11 @@ export default function CanteenPage() {
         if (mounted) {
           setDetails(dJson.data)
           setCategories(cJson.data)
-          const firstPage = iJson.data.filter((it) => it.ava !== false && it.canteenId === canteenIdNum)
+          const firstPage = iJson.data.filter((it) => it.canteenId === canteenIdNum)
           setItemsAll(firstPage)
           // Determine hasMore using meta if provided, else infer from page length
-          const limitFromMeta = typeof iJson.meta?.limit === 'number' ? iJson.meta!.limit : 50
-          const nextOffset = (typeof iJson.meta?.offset === 'number' ? iJson.meta!.offset + (iJson.meta!.limit || 50) : firstPage.length)
+          const limitFromMeta = typeof iJson.meta?.limit === 'number' ? iJson.meta!.limit : PAGE_LIMIT
+          const nextOffset = (typeof iJson.meta?.offset === 'number' ? iJson.meta!.offset + (iJson.meta!.limit || PAGE_LIMIT) : firstPage.length)
           const hasMore = typeof iJson.meta?.hasMore === 'boolean' ? iJson.meta!.hasMore : firstPage.length >= limitFromMeta
           setItemsHasMore(hasMore)
           setItemsNextOffset(nextOffset)
@@ -213,20 +214,20 @@ export default function CanteenPage() {
     setItemsFetchingMore(true)
     try {
       const base = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") || ""
-      const res = await fetch(`${base}/api/explore/items?canteen_id=${encodeURIComponent(canteenId)}&offset=${encodeURIComponent(String(itemsNextOffset))}`,
+  const res = await fetch(`${base}/api/explore/items?canteen_id=${encodeURIComponent(canteenId)}&offset=${encodeURIComponent(String(itemsNextOffset))}&limit=${encodeURIComponent(String(PAGE_LIMIT))}`,
         { cache: "no-store" })
       if (!res.ok) throw new Error(`Items HTTP ${res.status}`)
       const json: ItemsResponse = await res.json()
       if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed items fetch")
-      const newBatch = json.data.filter((it) => it.ava !== false && it.canteenId === canteenIdNum)
+  const newBatch = json.data.filter((it) => it.canteenId === canteenIdNum)
       // Dedupe by ItemId when appending
       setItemsAll((prev) => {
         const seen = new Set(prev.map((i) => i.ItemId))
         const deduped = newBatch.filter((i) => !seen.has(i.ItemId))
         return [...prev, ...deduped]
       })
-      const limitFromMeta = typeof json.meta?.limit === 'number' ? json.meta!.limit : 50
-      const nextOffset = typeof json.meta?.offset === 'number' ? json.meta!.offset + (json.meta!.limit || 50) : itemsNextOffset + newBatch.length
+  const limitFromMeta = typeof json.meta?.limit === 'number' ? json.meta!.limit : PAGE_LIMIT
+  const nextOffset = typeof json.meta?.offset === 'number' ? json.meta!.offset + (json.meta!.limit || PAGE_LIMIT) : itemsNextOffset + newBatch.length
       const hasMore = typeof json.meta?.hasMore === 'boolean' ? json.meta!.hasMore : newBatch.length >= limitFromMeta
       setItemsNextOffset(nextOffset)
       setItemsHasMore(hasMore)
@@ -284,7 +285,7 @@ export default function CanteenPage() {
         if (!res.ok) throw new Error(`Category HTTP ${res.status}`)
         const json: ItemsResponse = await res.json()
         if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed category fetch")
-        const filtered = json.data.filter((it) => it.ava !== false && it.canteenId === canteenIdNum)
+  const filtered = json.data.filter((it) => it.canteenId === canteenIdNum)
         setCatItemsMap((prev) => ({ ...prev, [activeTab]: filtered }))
       } catch (e) {
         console.error("Category fetch failed", e)
@@ -323,9 +324,9 @@ export default function CanteenPage() {
       const res = await fetch(url, { cache: "no-store" })
       if (!res.ok) throw new Error(`Search HTTP ${res.status}`)
       const json: ItemsResponse = await res.json()
-      const arr = Array.isArray(json?.data) ? json.data : []
-      // Filter to canteenId just in case
-      const filtered = arr.filter((it) => it.ava !== false && Number(it.canteenId) === canteenIdNum)
+  const arr = Array.isArray(json?.data) ? json.data : []
+  // Filter to canteenId just in case (include unavailable; UI will gray out)
+  const filtered = arr.filter((it) => Number(it.canteenId) === canteenIdNum)
       setSearchResults(filtered)
     } catch (e) {
       console.error("Canteen search failed", e)

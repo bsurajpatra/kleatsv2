@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useRouter, useParams } from "next/navigation"
 import FoodItemCard from "@/components/food-item-card"
 import { motion } from "framer-motion"
+import { toast } from "@/hooks/use-toast"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,6 +20,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import CartIcon from "@/components/cart-icon"
+import { isOpenNow } from "@/lib/utils"
 
 type RawItem = {
   ItemId: number
@@ -54,6 +56,13 @@ function buildImageUrl(path?: string | null) {
   if (!path) return "/placeholder.svg"
   const base = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
   return `${base}${path.startsWith("/") ? path : `/${path}`}`
+}
+
+function toHHMM(t?: string | null): string | undefined {
+  if (!t) return undefined
+  const s = String(t).trim()
+  if (s.length >= 5 && s[2] === ":") return s.slice(0, 5)
+  return s
 }
 
 export default function CategoryPage() {
@@ -95,9 +104,9 @@ export default function CategoryPage() {
           cache: "no-store",
         })
         if (!res.ok) throw new Error(`Items HTTP ${res.status}`)
-        const json: ItemsResponse = await res.json()
-        if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed items fetch")
-  const avail = json.data.filter((it) => it.ava !== false)
+  const json: ItemsResponse = await res.json()
+  if (json.code !== 1 || !Array.isArray(json.data)) throw new Error(json.message || "Failed items fetch")
+  const avail = Array.isArray(json.data) ? json.data : []
         const uniqueCIds = Array.from(new Set(avail.map((it) => it.canteenId)))
         // fetch canteen names
         const nameEntries = await Promise.all(
@@ -113,16 +122,25 @@ export default function CategoryPage() {
           }),
         )
         const nameMap = Object.fromEntries(nameEntries) as Record<number, string>
-  const mapped = avail.map((it) => ({
-          id: it.ItemId,
-          name: it.ItemName,
-          price: it.Price,
-          image: buildImageUrl(it.ImagePath || undefined),
-          category: it.category,
-          description: it.Description,
-          canteenId: it.canteenId,
-          canteen: nameMap[it.canteenId] || `Canteen ${it.canteenId}`,
-        }))
+        const mapped = avail.map((it) => {
+          const st = toHHMM(it.startTime)
+          const et = toHHMM(it.endTime)
+          const open = isOpenNow(st, et)
+          const available = (it.ava !== false) && (open !== false)
+          return {
+            id: it.ItemId,
+            name: it.ItemName,
+            price: it.Price,
+            image: buildImageUrl(it.ImagePath || undefined),
+            category: it.category,
+            description: it.Description,
+            canteenId: it.canteenId,
+            canteen: nameMap[it.canteenId] || `Canteen ${it.canteenId}`,
+            startTime: st,
+            endTime: et,
+            available,
+          }
+        })
   if (mounted) setCategoryItems(mapped)
       } catch (e) {
         console.error("Category load failed", e)
@@ -151,6 +169,10 @@ export default function CategoryPage() {
     const url = `${baseUrl}/api/user/cart/addToCart?id=${encodeURIComponent(String(itemId))}&quantity=${encodeURIComponent(String(quantity))}`
     const res = await fetch(url, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
     if (!res.ok) throw new Error(await res.text())
+    const json = await safeJson(res)
+    if (json && typeof json.code === "number" && json.code !== 1) {
+      throw new Error(String(json.message || "Failed to add to cart"))
+    }
   }
 
   const updateBackendCartQuantity = async (itemId: number, quantity: number) => {
@@ -165,6 +187,21 @@ export default function CategoryPage() {
       body: JSON.stringify({ itemId, quantity }),
     })
     if (!res.ok) throw new Error(await res.text())
+    const json = await safeJson(res)
+    if (json && typeof json.code === "number" && json.code !== 1) {
+      throw new Error(String(json.message || "Failed to update cart"))
+    }
+  }
+
+  // Helper to safely parse JSON without throwing on empty responses
+  async function safeJson(res: Response): Promise<any | null> {
+    const ct = res.headers.get("content-type") || ""
+    if (!ct.includes("application/json")) return null
+    try {
+      return await res.json()
+    } catch {
+      return null
+    }
   }
 
   const syncLocalCartFromBackend = async () => {
@@ -230,8 +267,7 @@ export default function CategoryPage() {
       }
       await handleIncrement(item)
     } catch {
-      // fallback to simple local add
-  addItem({ id: item.id, name: item.name, price: item.price, quantity: 1, canteen: item.canteen, image: item.image, category: item.category })
+  // fallback already handled in handleIncrement
     }
   }
 
@@ -255,7 +291,7 @@ export default function CategoryPage() {
       try {
         const res = await fetch(`${baseUrl}/api/user/cart/getCartItems`, { method: "GET", headers: { Authorization: token }, cache: "no-store" })
         if (res.ok) {
-          const data = await res.json()
+          const data = await safeJson(res)
           const arr: any[] = Array.isArray(data?.data?.cart) ? data.data.cart : []
           const found = arr.find((it) => Number(it.ItemId) === Number(item.id))
           if (found) existingQty = Number(found.quantity ?? 1) || 1
@@ -264,8 +300,15 @@ export default function CategoryPage() {
       if (existingQty > 0) await updateBackendCartQuantity(Number(item.id), existingQty + 1)
       else await addBackendToCart(item.id, 1)
       await syncLocalCartFromBackend()
-    } catch {
-      // keep optimistic state
+    } catch (e: any) {
+      // Revert optimistic change and notify user
+      if (current === 0) {
+        removeItem(item.id)
+      } else {
+        updateQuantity(item.id, current)
+      }
+      const msg = String(e?.message || "Could not add this item to cart.")
+      toast({ title: "Item not added", description: msg, variant: "destructive" as any })
     } finally {
       setBusyItemId(null)
     }
@@ -287,15 +330,23 @@ export default function CategoryPage() {
         await updateBackendCartQuantity(Number(item.id), next)
       } else {
         try {
-          await fetch(`${baseUrl}/api/user/cart/removeItemCart?id=${encodeURIComponent(String(item.id))}`, {
+          const res = await fetch(`${baseUrl}/api/user/cart/removeItemCart?id=${encodeURIComponent(String(item.id))}`, {
             method: "DELETE",
             headers: { Authorization: token },
           })
+          if (!res.ok) throw new Error(await res.text())
+          const json = await safeJson(res)
+          if (json && typeof json.code === "number" && json.code !== 1) throw new Error(String(json.message || "Failed to remove item"))
         } catch {}
       }
       await syncLocalCartFromBackend()
-    } catch {
-      // keep optimistic state
+    } catch (e: any) {
+      // Revert optimistic state and notify user
+      if (current > 0) {
+        updateQuantity(item.id, current)
+      }
+      const msg = String(e?.message || "Could not update item quantity.")
+      toast({ title: "Cart not updated", description: msg, variant: "destructive" as any })
     } finally {
       setBusyItemId(null)
     }
@@ -377,9 +428,10 @@ export default function CategoryPage() {
                   item={item}
                   quantity={cartItems.find((i) => i.id === item.id)?.quantity || 0}
                   isLoading={busyItemId === item.id}
-                  onAddToCart={() => handleAddToCart(item)}
-                  onIncrement={() => handleIncrement(item)}
-                  onDecrement={() => handleDecrement(item)}
+                  unavailable={(item as any).available === false}
+                  onAddToCart={(item as any).available === false ? undefined : () => handleAddToCart(item)}
+                  onIncrement={(item as any).available === false ? undefined : () => handleIncrement(item)}
+                  onDecrement={(item as any).available === false ? undefined : () => handleDecrement(item)}
                 />
               </motion.div>
             ))

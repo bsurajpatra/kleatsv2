@@ -389,7 +389,7 @@ export default function Home() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold leading-tight clamp-2">Free Sugarcane with every meal</p>
                       <p className="text-[11px] text-muted-foreground clamp-2">
-                        Enter FREECANE at checkout. One complimentary sugarcane with eligible meal combos. Limited time.
+                        Enter FREECANE at checkout (available after 3:30 PM). One complimentary sugarcane with eligible meal combos. Limited time.
                       </p>
                     </div>
                   </div>
@@ -416,13 +416,13 @@ export default function Home() {
                         <DialogHeader>
                           <DialogTitle>Free Sugarcane with every meal</DialogTitle>
                           <DialogDescription>
-                            Enter <strong>FREECANE</strong> at checkout to enjoy one complimentary sugarcane juice with every eligible item.
+                            Enter <strong>FREECANE</strong> at checkout after <strong>3:30 PM</strong> to enjoy one complimentary sugarcane juice with every eligible item.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="text-sm space-y-2">
                           <ul className="list-disc pl-5 space-y-1">
                             <li>Code must be entered before payment and qualifying items must be in cart.</li>
-                            <li>Eligible items: Starters(veg & Non-Veg), Fried Rice, Pizza, Burger</li>
+                            <li>Eligible items: Starters (Veg & Non-Veg), Fried Rice, Noodles, Pizza, Burgers, Lunch</li>
                             <li>One free sugarcane per item. Cannot be exchanged or transferred.</li>
                             <li>Not valid with other “free item” promotions unless stated.</li>
                             <li>Subject to availability. While supplies last.</li>
@@ -620,12 +620,10 @@ export default function Home() {
                 <h2 className="text-xl font-bold tracking-tight">Our Canteens</h2>
               </div>
               <div className="flex gap-4 overflow-x-auto pb-1">
-                {apiCanteens
-                  .filter((c) => {
-                    const open = isOpenNow(c.fromTime, c.ToTime)
-                    return open === true || open === null
-                  })
-                  .map((canteen) => (
+                {apiCanteens.map((canteen) => {
+                  const open = isOpenNow(canteen.fromTime, canteen.ToTime)
+                  const closed = open === false
+                  return (
                     <Link href={`/canteen/${canteen.canteenId}`} key={canteen.canteenId} className="min-w-[320px] max-w-[320px]" passHref>
                       <motion.div
                         whileHover={{ y: -5, boxShadow: "0px 10px 20px rgba(0,0,0,0.1)" }}
@@ -643,9 +641,11 @@ export default function Home() {
                                 }
                                 alt={canteen.CanteenName}
                                 fill
-                                className="object-cover"
+                                className={`object-cover${closed ? " grayscale opacity-70" : ""}`}
                               />
-                              <Badge className="absolute right-2 top-2 bg-green-500 text-white shadow-md">Open</Badge>
+                              <Badge className={`absolute right-2 top-2 shadow-md ${open === true ? "bg-green-500 text-white" : "bg-muted text-foreground"}`}>
+                                {open === true ? "Open" : open === false ? "Not available" : "Timing N/A"}
+                              </Badge>
                             </div>
                             <div className="p-4">
                               <h3 className="text-lg font-semibold truncate">{canteen.CanteenName}</h3>
@@ -662,7 +662,8 @@ export default function Home() {
                         </Card>
                       </motion.div>
                     </Link>
-                  ))}
+                  )
+                })}
                 {/* View All canteens tile */}
                 <Link href="/canteens" className="min-w-[320px] max-w-[320px]" aria-label="View all canteens">
                   <motion.div

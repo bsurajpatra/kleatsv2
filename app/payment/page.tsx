@@ -262,6 +262,23 @@ export default function PaymentPage() {
           try {
             const data = await res.json()
 
+            // If backend indicates failure (even with HTTP 200), stop and alert the user
+            const apiCode = typeof data?.code === "number" ? data.code : 1
+            if (apiCode !== 1) {
+              const topMsg = (data?.message as string) || "Some items are unavailable or not within the allowed time."
+              // Collect up to two item-specific messages if provided
+              const details: string[] = []
+              const cartArr: any[] = Array.isArray(data?.cart) ? data.cart : []
+              for (const entry of cartArr) {
+                if (entry?.message) details.push(String(entry.message))
+                if (details.length >= 2) break
+              }
+              const desc = details.length > 0 ? `${topMsg} ${details.join(" ")}` : topMsg
+              toast({ title: "Cannot place order", description: desc, variant: "destructive" })
+              setIsProcessing(false)
+              return
+            }
+
             // Extract provider and links once
             const provider = (data?.provider || data?.gateway || "").toString().toLowerCase()
             const webLink: string | undefined = data?.payment_links?.web || data?.payment_link || data?.redirect_url || data?.raw?.redirect_url

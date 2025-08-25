@@ -29,6 +29,8 @@ export default function CartPage() {
   const [pickupMode, setPickupMode] = useState<"asap" | "slot" | "custom">("asap")
   const [selectedSlot, setSelectedSlot] = useState<string>("")
   const [customMinutes, setCustomMinutes] = useState<number>(20)
+  // Allow scheduling up to 5 hours (300 minutes) ahead
+  const MAX_AHEAD_MINUTES = 300
   const [isProcessing, setIsProcessing] = useState(false)
   const [unavailableMap, setUnavailableMap] = useState<Record<number, string>>({})
   const [appliedCoupons, setAppliedCoupons] = useState<string[]>([])
@@ -36,6 +38,15 @@ export default function CartPage() {
   const [flashCoupon, setFlashCoupon] = useState<string | null>(null)
   const [celebrate, setCelebrate] = useState(false)
   const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/$/, "")
+
+  // FREECANE daily start time: 3:15 PM local time
+  const isAfterFreecaneStart = () => {
+    const now = new Date()
+    const h = now.getHours()
+    const m = now.getMinutes()
+    return h > 15 || (h === 15 && m >= 15)
+  }
+  const FREECANE_TIME_OK = isAfterFreecaneStart()
 
   // Redirect to login only after auth state is initialized, and preserve return URL
   useEffect(() => {
@@ -68,14 +79,15 @@ export default function CartPage() {
     router.push(`/payment?${qs.toString()}`)
   }
 
-  // Generate pickup time options (8 x 15-min slots starting from next quarter-hour)
+  // Generate pickup time options (15-min slots up to MAX_AHEAD_MINUTES starting from next quarter-hour)
   const generateTimeOptions = () => {
     const options: { value: string; label: string }[] = []
     const now = new Date()
     const minutes = now.getMinutes()
     const offset = (15 - (minutes % 15)) % 15
     const firstIncrement = offset === 0 ? 15 : offset
-    for (let i = 0; i < 8; i++) {
+    const slots = Math.floor(MAX_AHEAD_MINUTES / 15)
+    for (let i = 0; i < slots; i++) {
       const time = new Date(now.getTime() + (firstIncrement + i * 15) * 60000)
       const hours = time.getHours()
       const mins = time.getMinutes()
@@ -142,7 +154,7 @@ export default function CartPage() {
     const cat = (it.category || "").toString()
     return ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
   })
-  const freebiesCount = appliedCoupons.includes("FREECANE") && FREECANE_ENABLED
+  const freebiesCount = appliedCoupons.includes("FREECANE") && FREECANE_ENABLED && FREECANE_TIME_OK
     ? items.reduce((sum, it) => {
         const cat = (it.category || "").toString()
         const match = ELIGIBLE_FREECANE.some((c) => c.toLowerCase() === cat.toLowerCase())
@@ -155,8 +167,12 @@ export default function CartPage() {
       toast({ title: "Coupon disabled", description: "FREECANE is currently not available.", variant: "destructive" })
       return appliedCoupons
     }
+    if (code === "FREECANE" && !FREECANE_TIME_OK) {
+      toast({ title: "Available after 3:30 PM", description: "You can apply FREECANE after 3:30 PM.", variant: "destructive" })
+      return appliedCoupons
+    }
     if (code === "FREECANE" && !hasEligibleFreecane) {
-      toast({ title: "No eligible items", description: "FREECANE applies only to Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch items.", variant: "destructive" })
+  toast({ title: "No eligible items", description: "FREECANE applies only to Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch items.", variant: "destructive" })
       return appliedCoupons
     }
     setAppliedCoupons((prev) => {
@@ -186,13 +202,17 @@ export default function CartPage() {
       toast({ title: "Coupon disabled", description: "FREECANE is currently not available.", variant: "destructive" })
       return
     }
+    if (code === "FREECANE" && !FREECANE_TIME_OK) {
+      toast({ title: "Available after 3:30 PM", description: "FREECANE can be applied after 3:30 PM.", variant: "destructive" })
+      return
+    }
     if (appliedCoupons.includes(code)) {
       // Code already applied; nothing to change
       toast({ title: "Already applied", description: `${code} is already in use.` })
       return
     }
     if (code === "FREECANE" && !hasEligibleFreecane) {
-      toast({ title: "No eligible items", description: "Add a Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch item to use FREECANE.", variant: "destructive" })
+  toast({ title: "No eligible items", description: "Add a Starters, FriedRice, Noodles, Pizza, Burgers, or Lunch item to use FREECANE.", variant: "destructive" })
       return
     }
     toggleCoupon(code as "GLUG" | "FREECANE")
@@ -285,8 +305,7 @@ export default function CartPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Switch checked={allPackagingOn} onCheckedChange={(v) => setPackagingAll(!!v)} id="packaging-all" />
-                    <Label htmlFor="packaging-all" className="text-sm">{allPackagingOn ? "Enabled" : "Disabled"}</Label>
+                    <Switch checked={allPackagingOn} onCheckedChange={(v) => setPackagingAll(!!v)} id="packaging-all" aria-label="Toggle packaging for all items" />
                   </div>
                 </CardContent>
               </Card>
@@ -401,7 +420,7 @@ export default function CartPage() {
                 {/* Static coupon chips */}
         <div className="flex flex-wrap gap-2">
                   <AnimatePresence>
-          {[...(FREECANE_ENABLED ? ["FREECANE"] as const : []), "GLUG" as const].map((code, idx) => {
+          {[...(FREECANE_ENABLED && FREECANE_TIME_OK ? ["FREECANE"] as const : []), "GLUG" as const].map((code, idx) => {
                       const active = appliedCoupons.includes(code)
                       return (
                         <motion.div
@@ -441,7 +460,7 @@ export default function CartPage() {
                   </AnimatePresence>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  GLUG waives the Gateway Charge. FREECANE adds a free Sugarcane juice for each applicable item (Starters, FriedRice, Noodles, Pizza, Burgers, Lunch).
+                  GLUG waives the Gateway Charge. FREECANE (available after 3:30 PM) adds a free Sugarcane juice for each applicable item (Starters, FriedRice, Noodles, Pizza, Burgers, Lunch).
                 </p>
                 <AnimatePresence>
                   {freebiesCount > 0 && (
@@ -507,7 +526,7 @@ export default function CartPage() {
                       <span className="text-sm text-muted-foreground">Minutes from now</span>
                       <span className="text-sm font-medium">{customMinutes} min</span>
                     </div>
-                    <Slider value={[customMinutes]} onValueChange={(val) => setCustomMinutes(val[0] as number)} min={5} max={120} step={5} />
+                    <Slider value={[customMinutes]} onValueChange={(val) => setCustomMinutes(val[0] as number)} min={5} max={MAX_AHEAD_MINUTES} step={5} />
                     <div className="mt-1 flex items-center gap-2 rounded-md border p-3">
                       <Clock className="h-4 w-4" />
                       <span>{items.some((i) => !!i.packaging) ? "Pickup" : "Dine-in"} at {formatMinutesFromNow(customMinutes)}</span>
@@ -538,14 +557,22 @@ export default function CartPage() {
                     <span>₹0</span>
                   </div>
                 )}
+                {/* Always show the 3% gateway charge line */}
                 <motion.div
                   className="flex items-center justify-between"
                   animate={flashCoupon === "GLUG" ? { scale: [1, 1.03, 1] } : {}}
                   transition={{ duration: 0.4 }}
                 >
-                  <span>Gateway Charge (3%){appliedCoupons.includes("GLUG") ? " — waived by KL-GLUG" : ""}</span>
-                  <span>₹{effectiveGateway}</span>
+                  <span>Gateway Charge (3%)</span>
+                  <span>₹{gatewayCharge}</span>
                 </motion.div>
+                {/* If GLUG is applied, show a separate waiver line offsetting the charge */}
+                {appliedCoupons.includes("GLUG") && (
+                  <div className="flex items-center justify-between text-muted-foreground">
+                    <span>Waived by KL-GLUG</span>
+                    <span>-₹{gatewayCharge}</span>
+                  </div>
+                )}
                 <Separator className="my-2" />
                 <div className="flex items-center justify-between font-medium">
                   <span>Total</span>
